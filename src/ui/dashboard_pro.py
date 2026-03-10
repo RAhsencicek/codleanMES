@@ -84,14 +84,14 @@ SENSOR_LIMITS = {
     "horizontal_pressure": {"max": 150, "unit": "bar"},
 }
 
-# Her makine için sensör kombinasyonları
+# Her makine için sensör kombinasyonları (Tümü standartlaştırıldı)
 SENSOR_CONFIGS = {
     "HPR001": ["main_pressure", "oil_temp", "vibration"],
-    "HPR002": ["horizontal_pressure", "punch_motor", "vibration"],
-    "HPR003": ["main_pressure", "oil_temp", "vibration", "servo_torque"],
-    "HPR004": ["main_pressure", "cooling_water", "bearing_temp", "hydraulic_flow"],
-    "HPR005": ["servo_torque", "oil_temp", "vibration"],
-    "HPR006": ["main_pressure", "hydraulic_flow", "servo_torque"],
+    "HPR002": ["main_pressure", "oil_temp", "vibration"],
+    "HPR003": ["main_pressure", "oil_temp", "vibration"],
+    "HPR004": ["main_pressure", "oil_temp", "vibration"],
+    "HPR005": ["main_pressure", "oil_temp", "vibration"],
+    "HPR006": ["main_pressure", "oil_temp", "vibration"],
 }
 
 # Öneri metinleri
@@ -309,153 +309,133 @@ def build_gauge_bar(pct: float, width: int = 10) -> Text:
     return t
 
 
-def build_normal_card(mid: str) -> Panel:
+def build_machine_card(mid: str) -> Panel:
     """
-    NORMAL DURUM KARTI — Temiz ve profesyonel
-    """
-    content = Text(justify="center")
-    content.append("\n", style="")
-    content.append("✅", style="bold green")
-    content.append("\n\n", style="")
-    content.append("Sistem Stabil", style="bold green")
-    content.append("\n", style="")
-    content.append("Kesintisiz Üretim", style="dim green")
-    content.append("\n", style="")
-    
-    title = Text()
-    title.append(f" 🏭 {mid} ", style="bold white")
-    title.append("🟢", style="green")
-    
-    return Panel(
-        content,
-        title=title,
-        border_style="green",
-        box=box.ROUNDED,
-        padding=(0, 1),
-        height=11,
-    )
-
-
-def build_alarm_card(mid: str) -> Panel:
-    """
-    ALARM/UYARI KARTI — Zengin içerik: sensörler, ETA, öneri
+    3-Bölmeli (Sensörler | AI Analiz | Risk-ETA) Birleşik Makine Kartı
     """
     machine = MACHINES[mid]
     status = machine["status"]
     risk_score = machine["risk_score"]
-    severity = machine.get("severity", "ORTA")
+    severity = machine.get("severity", "ORTA") if status != "NORMAL" else "DÜŞÜK"
     issues = machine.get("issues", [])
     eta_min = machine.get("eta_min", 0)
     recommendation = machine.get("recommendation", "")
     
-    # Stil
+    # Stil Ayarları
     if status == "KRİTİK":
         border_style = "bold red"
         title_style = "bold red"
         icon = "🚨"
         box_type = box.HEAVY
-    else:
+    elif status == "UYARI":
         border_style = "yellow"
         title_style = "yellow"
         icon = "⚠️"
         box_type = box.HEAVY
-    
+    else: # NORMAL
+        border_style = "dim green"
+        title_style = "bold green"
+        icon = "🟢"
+        box_type = box.ROUNDED
+
     content = Text()
     
-    # ─── SENSÖR BARLARI (sadece %80+ olanlar) ───
+    # ─── BÖLÜM 1: SENSÖR DEĞERLERİ ───
     sensor_count = 0
+    # Normalde her makinenin ilk 3 sensörünü gösterelim
     for sensor_key, sensor in machine["sensors"].items():
+        if sensor_count >= 3:
+            break
         pct = sensor["pct"]
-        if pct >= 80 and sensor_count < 4:
-            tr_name = SENSOR_TR.get(sensor_key, sensor_key)
-            value = sensor["value"]
-            unit = sensor["unit"]
-            trend = sensor.get("trend", "stable")
+        tr_name = SENSOR_TR.get(sensor_key, sensor_key)
+        value = sensor["value"]
+        unit = sensor["unit"]
+        trend = sensor.get("trend", "stable")
+        
+        if trend == "up":
+            trend_icon = "↗"
+            trend_style = "red" if pct > 70 else "yellow"
+        elif trend == "down":
+            trend_icon = "↘"
+            trend_style = "blue"
+        else:
+            trend_icon = "→"
+            trend_style = "dim"
             
-            if trend == "up":
-                trend_icon = "↗"
-                trend_style = "red"
-            elif trend == "down":
-                trend_icon = "↘"
-                trend_style = "blue"
-            else:
-                trend_icon = "→"
-                trend_style = "dim"
+        content.append(f" {tr_name:<15}: ", style="cyan")
+        content.append(f"{value:>5.1f}{unit:<4} ", style="bold white")
+        content.append(trend_icon, style=trend_style)
+        content.append(" ", style="")
+        content.append_text(build_gauge_bar(pct, width=8))
+        content.append("\n", style="")
+        sensor_count += 1
+        
+    while sensor_count < 3:
+        content.append("\n", style="")
+        sensor_count += 1
+        
+    # ─── BÖLÜM 2: AI ANALİZ METNİ ───
+    content.append(" ├──────────────────────────────────────┤\n", style="dim")
+    
+    if status == "NORMAL":
+        ai_text = "Tüm termodinamik ve mekanik\ndeğerler optimum seviyede.\nİdeal üretim döngüsü devam ediyor."
+        content.append(f" 🤖 AI-Analiz: ", style="dim green")
+        content.append(f"{ai_text}\n", style="dim white")
+    else:
+        if issues:
+            issue_str = ", ".join([i.replace(" ulaştı!", "").replace(" seviyesinde", "") for i in issues[:2]])
+            ai_text = f"Anomali tespit:\n{issue_str}.\nÖneri: {recommendation}"
+        else:
+            ai_text = f"Anomali tespit edildi.\nÖneri: {recommendation}"
             
-            content.append(f" {tr_name}: ", style="cyan")
-            content.append(f"{value}{unit} ", style="bold white")
-            content.append(trend_icon, style=trend_style)
-            content.append(" ", style="")
-            content.append_text(build_gauge_bar(pct, width=8))
-            content.append("\n", style="")
-            sensor_count += 1
+        content.append(f" 🤖 AI-Analiz: ", style="bold " + ("red" if status == "KRİTİK" else "yellow"))
+        content.append(f"{ai_text}\n", style="white")
+        
+    # Yüksekliğin sabit kalması için AI text satır sayısını sabitleyelim
+    ai_lines = ai_text.count('\n') + 1
+    while ai_lines < 3:
+        content.append("\n", style="")
+        ai_lines += 1
+        
+    # ─── BÖLÜM 3: RİSK VE ETA ───
+    content.append(" ├──────────────────────────────────────┤\n", style="dim")
     
-    # ─── SORUN LİSTESİ ───
-    if issues:
-        content.append(" ───────────────────────\n", style="dim")
-        for issue in issues[:2]:
-            content.append(f" • {issue}\n", style="white")
-    
-    # ─── RİSK + ETA + ÖNERİ ───
-    content.append(" ───────────────────────\n", style="dim")
-    
-    risk_bar_width = 12
+    risk_bar_width = 15
     filled = int(risk_score / 100 * risk_bar_width)
     risk_bar = "█" * filled + "░" * (risk_bar_width - filled)
     
-    content.append(f" RİSK: ", style="bold")
+    content.append(f" RİSK DURUMU : ", style="bold")
     content.append(risk_bar, style=title_style)
     content.append(f" {risk_score}/100\n", style=title_style)
     
-    # ETA
-    if eta_min > 0:
+    if status == "NORMAL":
+        content.append(f" ⏱️ ETA       : ", style="bold")
+        content.append(f"Sonsuz (Stabil)\n", style="dim green")
+    else:
         if eta_min <= 10:
             eta_style = "bold red"
-            eta_icon = "⏰"
         elif eta_min <= 30:
             eta_style = "red"
-            eta_icon = "⏱️"
         else:
             eta_style = "yellow"
-            eta_icon = "🕐"
-        content.append(f" {eta_icon} ETA: ", style="bold")
-        content.append(f"{eta_min} dakika\n", style=eta_style)
-    
-    # Öneri
-    if recommendation:
-        rec_short = recommendation[:38] + "..." if len(recommendation) > 40 else recommendation
-        content.append(f" 💡 {rec_short}\n", style="dim white")
-    
+            
+        content.append(f" ⏱️ ETA       : ", style="bold")
+        content.append(f"{eta_min} Dakika İçinde Risk!\n", style=eta_style)
+        
     # Başlık
     title = Text()
     title.append(f" {icon} {mid} ", style=title_style)
-    if status == "KRİTİK":
-        title.append("🔴", style="")
-    else:
-        title.append("🟡", style="")
-    title.append(f" [{severity}]", style=title_style)
-    
+    if status != "NORMAL":
+        title.append(f" [{severity}]", style=title_style)
+        
     return Panel(
         content,
         title=title,
         border_style=border_style,
         box=box_type,
-        padding=(0, 0),
-        height=11,
+        padding=(1, 2),  # Artırılmış padding (dikey 1, yatay 2)
+        height=16,       # Daha yüksek kartlar
     )
-
-
-def build_machine_card(mid: str) -> Panel:
-    """
-    Duruma göre uygun kartı döndür
-    """
-    machine = MACHINES[mid]
-    status = machine["status"]
-    
-    if status in ["KRİTİK", "UYARI"]:
-        return build_alarm_card(mid)
-    else:
-        return build_normal_card(mid)
 
 
 def build_header() -> Panel:
@@ -496,7 +476,7 @@ def build_footer() -> Panel:
         title="[bold cyan]📋 Olay Akışı — Son 10 Dakika[/bold cyan]",
         border_style="cyan",
         box=box.ROUNDED,
-        height=14,  # 2 KAT BÜYÜK
+        height=12,
     )
 
 
@@ -506,7 +486,7 @@ def build_dashboard() -> Layout:
     layout.split_column(
         Layout(name="header", size=4),
         Layout(name="grid", ratio=1),
-        Layout(name="footer", size=16),  # 2 KAT BÜYÜK
+        Layout(name="footer", size=12),
     )
     
     layout["header"].update(build_header())
