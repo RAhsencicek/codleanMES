@@ -417,7 +417,7 @@ def build_dashboard() -> Layout:
 # ─── Dashboard build (her 2 saniyede) ──────────────────────────────────────
 def refresh_dashboard():
     """
-   TÜM HPR MAKİNELERİNİ GÖSTERİR:
+    TÜM HPR MAKİNELERİNİ GÖSTERİR:
     - Config'den makine listesini al
     - State'den son bilinen değerleri oku
     - Veri yoksa "—" göster
@@ -429,20 +429,18 @@ def refresh_dashboard():
     # DEBUG
     add_log(f"Config'de {len(all_hpr)} makine: {', '.join(all_hpr[:3])}...", "dim")
     
-   add_log(f"Config'de {len(all_hpr)} makine: {', '.join(all_hpr[:3])}...", "dim")
-    
-   for mid in all_hpr:
-       ms = state.get(mid, {})
+    for mid in all_hpr:
+        ms = state.get(mid, {})
         md = machine_data[mid]
         
         # State'den EWMA ortalama değerlerini oku
         if ms.get("ewma_mean"):
             # Numeric sensörler - EWMA ortalama (SMOOTHING zaten limits_config.yaml'da)
-           for sensor, ewma_val in ms.get("ewma_mean", {}).items():
+            for sensor, ewma_val in ms.get("ewma_mean", {}).items():
                 md["sensors"][sensor] = round(ewma_val, 1)
             
             # Boolean sensörler - Kaç dakikadır aktif?
-           for sensor, bad_min in ms.get("bool_active_since", {}).items():
+            for sensor, bad_min in ms.get("bool_active_since", {}).items():
                 if isinstance(bad_min, (int, float)) and bad_min > 0:
                     md["booleans"][sensor] = bad_min
             
