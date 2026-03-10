@@ -1080,18 +1080,18 @@ için en değerli veri kaynağıdır.
 
 ---
 
-## 10. Modüller ve Sorumluluklar
+## 10. Modüller ve Sorumluluklar (GÜNCEL YAPI)
 
 | Modül | Sorumluluk | Girdi | Çıktı |
 |-------|-----------|-------|-------|
-| `kafka_consumer.py` | Kafka bağlantısı, mesaj döngüsü | Kafka topic | Raw JSON dict |
-| `data_validator.py` | Schema, UNAVAILABLE, spike, stale, startup | Raw JSON | Temiz dict veya None |
-| `state_store.py` | Ring buffer, EWMA, confidence, boolean, checkpoint | Temiz dict | Güncellenen state |
-| `threshold_checker.py` | Anlık değer vs config limiti | Sensör değeri + limits | ThresholdSignal veya None |
-| `trend_detector.py` | Doğrusal regresyon, ETA tahmini | Ring buffer + limit | TrendSignal veya None |
-| `risk_scorer.py` | İki sinyali confidence'la birleştirme | İki signal + confidence | RiskEvent (0-100) |
-| `alert_engine.py` | Throttle, açıklama, DB kaydı, terminal | RiskEvent | Ekran çıktısı + DB satırı |
-| `limits_config.yaml` | Min/max değerleri, tüm parametreler | — | Config dict |
+| `src/app/kafka_scan.py` | Kafka bağlantısı, mesaj döngüsü | Kafka topic | Raw JSON dict |
+| `src/core/data_validator.py` | Schema, UNAVAILABLE, spike, stale, startup | Raw JSON | Temiz dict veya None |
+| `src/core/state_store.py` | Ring buffer, EWMA, confidence, boolean, checkpoint | Temiz dict | Güncellenen state |
+| `src/core/threshold_checker.py` | Anlık değer vs config limiti | Sensör değeri + limits | ThresholdSignal veya None |
+| `src/core/trend_detector.py` | Doğrusal regresyon, ETA tahmini | Ring buffer + limit | TrendSignal veya None |
+| `src/core/risk_scorer.py` | İki sinyali confidence'la birleştirme | İki signal + confidence | RiskEvent (0-100) |
+| `src/app/alert_engine.py` | Throttle, açıklama, DB kaydı, terminal | RiskEvent | Ekran çıktısı + DB satırı |
+| `config/limits_config.yaml` | Min/max değerleri, tüm parametreler | — | Config dict |
 
 ---
 
