@@ -1,0 +1,120 @@
+{
+  "training_date": "2026-03-06T15:35:20.048929",
+  "best_model": "RandomForest",
+  "metrics": {
+    "f1": 0.4819479429051218,
+    "auc": 0.6749078095087503,
+    "precision": 0.3174778761061947,
+    "recall": 1.0
+  },
+  "threshold": 0.25,
+  "cross_validation": {
+    "cv_f1_mean": 0.6859102791360765,
+    "cv_f1_std": 0.019369093736791566,
+    "cv_auc_mean": 0.7611500547645125,
+    "cv_auc_std": 0.011331072782402305,
+    "stability_status": "STAB\u0130L"
+  },
+  "cost_analysis": {
+    "false_positive_cost": 10000,
+    "false_negative_cost": 50000,
+    "total_cost_test": 6170000,
+    "optimal_threshold_cost": 0
+  },
+  "data_split": {
+    "train_size": 3614,
+    "test_size": 904,
+    "train_date_range": [
+      "2026-02-27T16:00:00+00:00",
+      "2026-03-04T08:20:00+00:00"
+    ],
+    "test_date_range": [
+      "2026-03-04T08:20:00+00:00",
+      "2026-03-06T11:30:00+00:00"
+    ]
+  },
+  "feature_importance": [
+    {
+      "feature": "total_faults_window",
+      "importance": 0.2871311087152235
+    },
+    {
+      "feature": "active_sensors",
+      "importance": 0.2556206512481508
+    },
+    {
+      "feature": "main_pressure__over_ratio",
+      "importance": 0.06018835178408074
+    },
+    {
+      "feature": "main_pressure__value_max",
+      "importance": 0.05636696695943693
+    },
+    {
+      "feature": "horizontal_press_pressure__value_max",
+      "importance": 0.05118361110827697
+    },
+    {
+      "feature": "main_pressure__value_mean",
+      "importance": 0.05024523298082529
+    },
+    {
+      "feature": "main_pressure__fault_count",
+      "importance": 0.0457019490702148
+    },
+    {
+      "feature": "horizontal_press_pressure__over_ratio",
+      "importance": 0.04410252508451496
+    },
+    {
+      "feature": "horizontal_press_pressure__fault_count",
+      "importance": 0.03691429832381305
+    },
+    {
+      "feature": "horizontal_press_pressure__value_mean",
+      "importance": 0.03185453345227147
+    },
+    {
+      "feature": "lower_ejector_pressure__over_ratio",
+      "importance": 0.012964036030776937
+    },
+    {
+      "feature": "lower_ejector_pressure__value_max",
+      "importance": 0.012155470386597542
+    },
+    {
+      "feature": "lower_ejector_pressure__value_mean",
+      "importance": 0.011447236257346016
+    },
+    {
+      "feature": "main_pressure__value_std",
+      "importance": 0.009396165954608283
+    },
+    {
+      "feature": "lower_ejector_pressure__fault_count",
+      "importance": 0.009293274886701031
+    },
+    {
+      "feature": "horizontal_press_pressure__value_std",
+      "importance": 0.004116647136602404
+    },
+    {
+      "feature": "lower_ejector_pressure__value_std",
+      "importance": 0.0039440656739746826
+    },
+    {
+      "feature": "vertical_infeed_speed__over_ratio",
+      "importance": 0.0037829226817266415
+    },
+    {
+      "feature": "vertical_infeed_speed__value_mean",
+      "importance": 0.003031538030752064
+    },
+    {
+      "feature": "vertical_infeed_speed__fault_count",
+      "importance": 0.002956304298661802
+    }
+  ],
+  "training_rows": 4518,
+  "anomaly_rows": 1116
+}
