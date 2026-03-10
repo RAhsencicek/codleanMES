@@ -14,7 +14,7 @@
 **Endüstriyel üretim hatları devasa, gürültülü ve karmaşıktır.**
 Geleneksel OEE panelleri size sadece makinenin "bozulduğunu" veya "durduğunu" söyler — yani iş işten geçtikten sonra müdahale edersiniz.
 
-**Codlean MES**, farklı çalışır. Makine sensörlerinden (Basınç, Yağ Sıcaklığı, Titreşim, Tork vb.) saniyede fırlayan devasa verinin içine dalarak **"Yapay Zeka Destekli Bir Zaman Makinesi"** gibi çalışır. Sadece mevcut durumu göstermekle kalmaz; makinenin geçmişini ezberler, şimdisini denetler ve gelecekte ne zaman, hangi parçanın arıza vereceğini (*ETA: Estimated Time of Arrival*) saniyeler öncesinden hesaplar.
+**Codlean MES**, makine sensörlerinden (Basınç, Yağ Sıcaklığı, Titreşim, Tork vb.) saniyede fırlayan devasa verinin içine dalarak **"Yapay Zeka Destekli Bir Zaman Makinesi"** gibi çalışır. Sadece mevcut durumu göstermekle kalmaz; makinenin geçmişini ezberler, şimdisini denetler ve gelecekte ne zaman, hangi parçanın arıza vereceğini saniyeler öncesinden hesaplar.
 
 </div>
 
@@ -22,10 +22,10 @@ Geleneksel OEE panelleri size sadece makinenin "bozulduğunu" veya "durduğunu" 
 
 ## 📸 Canlı İzleme Terminali (Dashboard)
 
-Codlean, veri karmaşasını şık, modern, göz yormayan ve "renklerle konuşan" dinamik bir arayüze dönüştürür. Sayı kalabalığı değil, renkli **eylem çağrıları** (Call-to-Action) sunar.
+Codlean, veri karmaşasını şık, modern, göz yormayan ve "renklerle konuşan" dinamik bir arayüze dönüştürür. 
 
 <div align="center">
-  <img src="docs/images/dashboard-preview.png" alt="Codlean MES Dashboard Prototype" width="100%">
+  <img src="docs/images/dashboard-preview.png" alt="Codlean MES Dashboard" width="100%">
   <br>
   <i>Şekil 1: Canlı Arıza Tahmin Arayüzü (Hybrid AI Modu)</i>
 </div>
@@ -40,84 +40,55 @@ PYTHONPATH=. python src/ui/dashboard_pro.py
 
 ---
 
-## 🌟 Neden Eşsiz? (Piyasadaki Sığ Sistemlerden Farkımız)
+## 🏗️ 4-Katmanlı Yapay Zeka Pipeline Mimarisi
 
-Standart "Kestirimci Bakım" (Predictive Maintenance) çözümleri genellikle tek boyutlu çalışır. Ya sığ kural limitlerine takılıp yanlış alarmlar üretirler ya da yapay zekanın "kara kutusunda" kaybolup teknisyene anlamsız sonuçlar verirler. 
+Makineden fırlayan anlık, gürültülü (noisy) bir titreşim verisinin teknisyenin ekranına "anlamlı bir öneri" olarak düşmesi süreci sanatsal bir mimari gerektirir.
 
-**Codlean ise veriyi *4 farklı Akıl Katmanında* işleyerek "Dijital İkiz (Digital Twin)" bilinci yaratır.**
+<div align="center">
+  <img src="docs/images/Gemini_Generated_Image_4ztegx4ztegx4zte.png" alt="Codlean MES Architecture" width="100%">
+  <br>
+  <i>Şekil 2: 4-Katmanlı Hibrit Yapay Zeka Fabrikasyon Mimarisi</i>
+</div>
 
-### 🥊 Standard IoT Panelleri vs. CODLEAN MES
+<br>
 
-| Özellik | Geleneksel IoT / OEE Panelleri | 🔥 CODLEAN Hybrid MES |
-| :--- | :--- | :--- |
-| **Arıza Yaklaşımı** | Reaktif (Bozulunca Haber Verir) | **Proaktif (Bozulmadan 60 Dk. Önce Haber Verir)** |
-| **Karar Mekanizması** | Sadece Kural Tabanlı (Limit aşılırsa uyarır) | **Rule-Based + Makine Öğrenimi (İvmelenmeyi okur)** |
-| **Kayıp-Veri Telafisi** | Sunucu koparsa sistem çalışmaz | **Historical Replay ile kesintisiz geçmiş veri analizi** |
-| **Teknisyen Dili** | "Hata Kodu: E-404" | **"Açıklanabilir AI: Valf-4'ü Kontrol Edin, 15 dk kaldı"** |
-| **Olasılık vs Kesinlik** | Herkesi paniğe sokan yanlış alarmlar | **Cost-Aware: Recall öncelikli %100 filtrelenmiş kesinlik** |
+Veri akışı şu teknik süzgeçlerden geçer:
 
----
+### 🟢 KATMAN 0: Ağ Geçidi & Güvenlik Görevlisi (Gateway Layer)
+Sensörlerden fırlayan devasa Kafka verisi ana sisteme ulaşmaya çalışırken bu katmanda filtrelenir:
+- **Format ও Dil Bilgisi Kontrolü:** Hatalı formattaki (virgül/nokta hataları) sensör değerlerini onarır.
+- **Kopuk Sensör Reddi:** `UNAVAILABLE` veya boş paketleri reddeder.
+- **Bayat Veri (Stale Data) Engeli:** Ağ gecikmesi nedeniyle 5 dakika geç gelen paketler zaman çizelgesini bozmamak adına çöpe atılır.
+- **Spike Filtresi:** Elektrik sıçramaları gibi 5 standart sapmalık (*5-sigma*) anlık pikler silinir ki ML modelleri bunu arıza sanmasın.
 
-## 🏗️ 4-Katmanlı Yapay Zeka Pipeline (Fabrikasyon Süreci)
+### 🟡 KATMAN 1: Kısa Süreli Hafıza Merkezi (State Store)
+Yapay Zeka izole 1 saniyelik değerlere bakarak karar vermez.
+- **Ring Buffer (Kayan Pencere):** Tüm makine sensörlerinin son 12 saatteki (veya son 720 kayıt) ölçümlerini anlık bellekte milisaniyeler içinde saklar.
+- **Hareketli Ortalama (EWMA):** Zaman serilerindeki anlık gürültüleri filtreleyip eylemsizlik trendini hesaplar.
+- **Disk Koruması:** Sistem aniden kapansa dahi `state.json` üzerinden tüm hafızayı saniyede geri yükler.
 
-Sensörlerden gelen hiçbir veri doğrudan teknisyenin önüne düşmez. Makineden fırlayan anlık, gürültülü (noisy) bir titreşim verisinin teknisyenin ekranına "anlamlı bir öneri" olarak düşmesi süreci sanatsal bir mimari gerektirir:
+### 🔴 KATMAN 2: Karar Motoru & Hibrit Zeka (AI Engine)
+Uygulamanın ana beynidir. İki bağımsız otonom sistemi tek potada eritir:
+- **Kural Tabanlı Threshold (%100 Kesinlik):** Basınç 150 Bar sınırını aştı ise bu teknisyen onaylı "kesin" bir arızadır. Şansa veya makine öğrenimi tahminine bırakılmaz; derhal müdahale emri verilir.
+- **Makine Öğrenimi (ML Predictor):** Değerler henüz 120 Bar gibi normal sınırlardadır. Ancak *Random Forest* veya *XGBoost* modeli; Tork, Titreşim ve Sıcaklık parametrelerindeki eş zamanlı ufak dalgalanmaları ve "mikro ivmelenmeleri" saptayarak: *"Mevcut ivme korunursa ana valf 45 dakika içinde arızaya geçecek"* öngörüsünü üretir.
+- **Ensemble Risk Scorer:** İki sistemin çıktılarını harmanlayarak 0-100 arasında net bir risk skoru basar.
 
-```mermaid
-flowchart TD
-    %% Katman Renkleri ve Stilleri
-    classDef kafka fill:#1f2937,stroke:#FF5722,stroke-width:2px,color:#FFF,rx:10,ry:10
-    classDef layer0 fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0f172a,rx:10,ry:10
-    classDef layer1 fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#0f172a,rx:10,ry:10
-    classDef layer2 fill:#fce7f3,stroke:#be185d,stroke-width:2px,color:#0f172a,rx:10,ry:10
-    classDef layer3 fill:#dcfce7,stroke:#15803d,stroke-width:2px,color:#0f172a,rx:10,ry:10
-    classDef external fill:#1e293b,stroke:#94a3b8,stroke-width:2px,color:#f8fafc,rx:10,ry:10
-
-    KAFKA[("📦 KAFKA STREAM <br> Milyonlarca Ham Json Mesajı")]:::kafka
-
-    subgraph K0 ["🟢 KATMAN 0: Ağ Geçidi (Gateway)"]
-    direction TB
-    L0["<b>Savunma Hattı</b><br>Gürültülü, bayat (stale) veya kırık sinyaller ana sisteme ulaşmadan kapıdan çevrilir."]:::layer0
-    end
-
-    subgraph K1 ["🟡 KATMAN 1: Hafıza (State Store)"]
-    direction TB
-    L1["<b>Zaman Bağlamı</b><br>Son 12 saatin hareketli ortalamaları (EWMA) hesaplanır. Sistem hafızasını disk üzerinden (state.json) asla kaybetmez."]:::layer1
-    end
-
-    subgraph K2 ["🔴 KATMAN 2: Karar Motoru (AI Engine)"]
-    direction TB
-    L2["<b>Hibrit Zeka</b><br>Kural Tabanlı Eşik Kontrolü (%100 Kesinlik) ile Makine Öğrenimi (Olası Risk) algoritmaları sentezlenerek <i>Korelasyon Skoru</i> hesaplanır."]:::layer2
-    end
-
-    subgraph K3 ["🟢 KATMAN 3: İletişim (Alert Engine)"]
-    direction TB
-    L3["<b>Filtre ve Aksiyon</b><br>Art arda gelen sinir bozucu alarmlar susturulur (Throttle). Sadece Açıklanabilir ve Eyleme Çevrilebilir (Actionable) İnsan dilinde net komutlar verilir."]:::layer3
-    end
-
-    OUT[/"💻 Dinamik Dashboard <br>&<br> 🗄️ Postgres Veritabanı"/]:::external
-
-    KAFKA ==>|Gürültülü Veri| K0
-    K0 ==>|Temiz Veri| K1
-    K1 ==>|Bağlamsal Veri| K2
-    K2 ==>|Risk Skoru| K3
-    K3 ==>|Net Emir| OUT
-```
+### 🟢 KATMAN 3: İletişim & Alert Engine
+Bu katman "Açıklanabilir Yapay Zeka" (XAI) ilkesini benimser.
+- **Alarm Boğma (Throttle):** "Teknoloji Yorgunluğunu" engellemek adına aynı makine için saniyede 10 kez alarm üretmek yerine 30 dakikalık periyotlarla tok ve net uyarılar geçer.
+- **Actionable AI (Eyleme Dönüştürülebilir Çıktı):** Ekrana `Hata Kodu 404` veya `Skor %84` şeklinde anlamsız çıktılar basmaz. Doğrudan: 
+  > 🚨 *AI-Analiz: Valf sınır değerlere yaklaşıyor, titreşim artış trendinde. Öneri: Soğutma suyunu artırın, Makineyi rölantiye alın. (ETA: 35 Dk)* 
+şeklinde insan dilinde direktif verir.
 
 ---
 
-## ⚡ Sistemi Benzersiz Kılan 3 Yaratıcı Karar
+## ⚡ Sistemi Benzersiz Kılan Özellikler
 
-1. **Hiper-Hassas Hibrit Risk Motoru**  
-   Limit aşımını (Rule-Based) teknisyen seviyesinde yakalar, ancak eşik aşılmadan önceki ince ivmelenmeyi Machine Learning (Random Forest) gücüyle yakalayarak **iki zekayı** tek potada birleştirir.
-2. **Kayıpsız Zaman Makinesi (Historical Replay)**  
-   Fabrikada internet kopsa bile sistem çökmez. Dahili olay döngüsü (Event Loop) sayesinde daha önceki ayların devasa arıza log dosyasını bir zaman tünelindeymiş gibi işleyerek sahte olmayan, kanıtlanmış bir test altyapısı sunar.
-3. **Maliyet-Farkındalıklı (Cost-Aware) Tahmin**  
-   "Makinelerin patlaması, durmasından daha tehlikelidir." ilkesiyle **Recall** öncelikli çalışır. Sistemin ana misyonu hiçbir arıza sinyalini "şansa bırakmamak" üzerinedir.
+- **Maliyet-Farkındalıklı (Cost-Aware) Tahminleme:** Makinelerin duruş maliyeti, onarım maliyetinden katbekat yüksektir. Algoritma **Recall** (Duyarlılık) oranını maksimize eder; asgari bir şüphede dahi teknik ekibi tetikler, böylece potansiyel arızalar şansa bırakılmaz.
+- **Kayıpsız Zaman Makinesi (Historical Replay Engine):** Fabrika lokal ağ bağlantısını veya Kafka erişimini kaybetse dahi, sistem kendi içindeki *Event Loop* motoru sayesinde gigabytelarca geçmiş *violation_log.json* verisini saniye saniye işleyerek sahte olmayan, kanıtlanmış bir test & simülasyon altyapısı sunar.
 
 ---
 
-## ⚙️ Geliştirici Dosyaları ve Detaylar
+## ⚙️ Geliştirici Kaynakları
 
-Bu proje "oyuncak bir demo" değil, dev üretim sahaları için milisaniye düzeyinde tasarlanmış **Production-Ready** bir altyapıdır.
-
-Teknik kurulum standartları, veri madenciliği dokümantasyonları ve model (ML) eğitim analizlerinin tamamı için [Geliştirici Dokümantasyonunu (PROJECT_DETAILS.md)](./PROJECT_DETAILS.md) inceleyebilirsiniz.
+Daha derinlemesine teknik detaylar, sınıf yapıları, XGBoost model eğitim matrisleri ve veri hazırlık (preprocessing) pipeline analizleri için [Geliştirici Dokümantasyonunu (PROJECT_DETAILS.md)](./PROJECT_DETAILS.md) inceleyebilirsiniz.
