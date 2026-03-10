@@ -54,31 +54,102 @@ Makineden fırlayan anlık, gürültülü (noisy) bir titreşim verisinin teknis
 
 Veri akışı şu teknik süzgeçlerden geçer:
 
-### 🟢 KATMAN 0: Ağ Geçidi & Güvenlik Görevlisi (Gateway Layer)
-Sensörlerden fırlayan devasa Kafka verisi ana sisteme ulaşmaya çalışırken bu katmanda filtrelenir:
-- **Format ও Dil Bilgisi Kontrolü:** Hatalı formattaki (virgül/nokta hataları) sensör değerlerini onarır.
-- **Kopuk Sensör Reddi:** `UNAVAILABLE` veya boş paketleri reddeder.
-- **Bayat Veri (Stale Data) Engeli:** Ağ gecikmesi nedeniyle 5 dakika geç gelen paketler zaman çizelgesini bozmamak adına çöpe atılır.
-- **Spike Filtresi:** Elektrik sıçramaları gibi 5 standart sapmalık (*5-sigma*) anlık pikler silinir ki ML modelleri bunu arıza sanmasın.
-
-### 🟡 KATMAN 1: Kısa Süreli Hafıza Merkezi (State Store)
-Yapay Zeka izole 1 saniyelik değerlere bakarak karar vermez.
-- **Ring Buffer (Kayan Pencere):** Tüm makine sensörlerinin son 12 saatteki (veya son 720 kayıt) ölçümlerini anlık bellekte milisaniyeler içinde saklar.
-- **Hareketli Ortalama (EWMA):** Zaman serilerindeki anlık gürültüleri filtreleyip eylemsizlik trendini hesaplar.
-- **Disk Koruması:** Sistem aniden kapansa dahi `state.json` üzerinden tüm hafızayı saniyede geri yükler.
-
-### 🔴 KATMAN 2: Karar Motoru & Hibrit Zeka (AI Engine)
-Uygulamanın ana beynidir. İki bağımsız otonom sistemi tek potada eritir:
-- **Kural Tabanlı Threshold (%100 Kesinlik):** Basınç 150 Bar sınırını aştı ise bu teknisyen onaylı "kesin" bir arızadır. Şansa veya makine öğrenimi tahminine bırakılmaz; derhal müdahale emri verilir.
-- **Makine Öğrenimi (ML Predictor):** Değerler henüz 120 Bar gibi normal sınırlardadır. Ancak *Random Forest* veya *XGBoost* modeli; Tork, Titreşim ve Sıcaklık parametrelerindeki eş zamanlı ufak dalgalanmaları ve "mikro ivmelenmeleri" saptayarak: *"Mevcut ivme korunursa ana valf 45 dakika içinde arızaya geçecek"* öngörüsünü üretir.
-- **Ensemble Risk Scorer:** İki sistemin çıktılarını harmanlayarak 0-100 arasında net bir risk skoru basar.
-
-### 🟢 KATMAN 3: İletişim & Alert Engine
-Bu katman "Açıklanabilir Yapay Zeka" (XAI) ilkesini benimser.
-- **Alarm Boğma (Throttle):** "Teknoloji Yorgunluğunu" engellemek adına aynı makine için saniyede 10 kez alarm üretmek yerine 30 dakikalık periyotlarla tok ve net uyarılar geçer.
-- **Actionable AI (Eyleme Dönüştürülebilir Çıktı):** Ekrana `Hata Kodu 404` veya `Skor %84` şeklinde anlamsız çıktılar basmaz. Doğrudan: 
-  > 🚨 *AI-Analiz: Valf sınır değerlere yaklaşıyor, titreşim artış trendinde. Öneri: Soğutma suyunu artırın, Makineyi rölantiye alın. (ETA: 35 Dk)* 
-şeklinde insan dilinde direktif verir.
+```text
+┌─────────────────────────────────────────────────────────┐
+│                    KAFKA CONSUMER                       │
+│          mqtt-topic-v2 @ 10.71.120.10:7001              │
+│                                                         │
+│  Her ~10 saniyede bir tüm makinelerin snapshot'ı gelir. │
+│  Biz sadece okuruz, sisteme müdahale etmeyiz.           │
+└───────────────────────┬─────────────────────────────────┘
+                        │  Ham JSON mesajı
+                        │  (string'ler, UNAVAILABLE'lar,
+                        │   gecikmiş timestamp'lar dahil)
+                        ▼
+┌─────────────────────────────────────────────────────────┐
+│     [YENİ] VERİ TOPLAYICI: window_collector.py          │
+│                                                         │
+│  Ham Kafka verisini analiz katmanından bağımsız dinler. │
+│  Her saat başı normal operasyon profillerini kaydeder.  │
+│  ML modeli için canlı eğitim verisini (live_windows)    │
+│  oluşturarak hibrit yaklaşıma zemin hazırlar.           │
+└───────────────────────┬─────────────────────────────────┘
+                        │  Ham JSON mesajı devam eder
+                        ▼
+┌─────────────────────────────────────────────────────────┐
+│         KATMAN 0: VERİ GİRİŞ & DOĞRULAMA                │
+│                                                         │
+│  "Bu veri güvenilir mi, işlenebilir mi?"                │
+│                                                         │
+│  • Schema kontrolü  → gerekli alanlar var mı?           │
+│  • UNAVAILABLE → None dönüşümü                          │
+│  • Timestamp kontrolü → veri 5 dk'dan eski mi?          │
+│  • String → float dönüşümü (result alanı hep string)    │
+│  • Spike filtresi → sensör aniden 10x değer attı mı?    │
+│  • Startup mask → makine yeni açıldı mı? (60 dk)        │
+│                                                         │
+│  ÇIKIŞ: Temiz, tip-güvenli, işlenmeye hazır veri        │
+└───────────────────────┬─────────────────────────────────┘
+                        │  Doğrulanmış veri paketi
+                        ▼
+┌─────────────────────────────────────────────────────────┐
+│         KATMAN 1: STATE STORE (Bellek)                  │
+│                                                         │
+│  "Bu makinenin geçmişini ve bağlamını biliyorum."       │
+│                                                         │
+│  • Ring buffer: her sensörün son 720 değeri (2 saat)    │
+│  • EWMA: canlı güncellenen ortalama ve standart sapma   │
+│  • Confidence: veri kalitesine göre 0-1 güven skoru     │
+│  • Boolean takibi: "bu filtre kaç saattir kirli?"       │
+│  • Checkpoint: 5 dk'da bir atomik JSON'a yedek          │
+│                                                         │
+│  ÇIKIŞ: Her sensörün trend hesabı için gereken geçmiş   │
+└───────────────────────┬─────────────────────────────────┘
+                        │  Zenginleştirilmiş durum verisi
+                        ▼
+┌─────────────────────────────────────────────────────────┐
+│         KATMAN 2: ANALİZ MOTORU                         │
+│                                                         │
+│  "Bu makinede risk var mı? Varsa ne kadar acil?"        │
+│                                                         │
+│  ┌──────────────────────┐  ┌─────────────────────────┐  │
+│  │   ThresholdChecker   │  │     TrendDetector       │  │
+│  │                      │  │                         │  │
+│  │  Anlık değeri config │  │  Son 30 ölçümün eğimini │  │
+│  │  min/max ile karşı-  │  │  hesaplar. Eğim pozitif │  │
+│  │  laştırır.           │  │  ve güçlüyse (R²>0.7)   │  │
+│  │                      │  │  limite kaç saat kaldı- │  │
+│  │  %85 → ORTA uyarı    │  │  ğını tahmin eder.      │  │
+│  │  %100 → YÜKSEK       │  │                         │  │
+│  │  %110 → KRİTİK       │  │  Startup phase'de çalış-│  │
+│  │                      │  │  maz (ısınma maskelenir)│  │
+│  └──────────┬───────────┘  └────────────┬────────────┘  │
+│             └──────────────┬────────────┘               │
+│                            ▼                            │
+│                     RiskScorer                          │
+│                                                         │
+│         İki sinyali confidence ile ağırlıklandırıp      │
+│         0-100 arası tek bir risk skoru üretir.          │
+│                                                         │
+│  ÇIKIŞ: RiskEvent (skor, neden, ETA, hangi sensör)      │
+└───────────────────────┬─────────────────────────────────┘
+                        │  Risk skoru ≥ eşik ise devam
+                        │  Risk skoru < eşik ise atla
+                        ▼
+┌─────────────────────────────────────────────────────────┐
+│         KATMAN 3: ALERT ENGINE                          │
+│                                                         │
+│  "Teknisyen ne görüyor? Ne zaman, nasıl bildirilecek?"  │
+│                                                         │
+│  • Throttle kontrolü: 30 dk'da 1 alert / makine         │
+│  • Severity belirleme: DÜŞÜK/ORTA/YÜKSEK/KRİTİK         │
+│  • Açıklama üretimi: "Neden? Hangi sensör? Ne öneriyiz?"│
+│  • DB kaydı: alert_log tablosuna sensör değerleriyle    │
+│  • Terminal çıktısı: renkli, okunabilir panel           │
+│                                                         │
+│  ÇIKIŞ: Teknisyen ekranı + PostgreSQL kaydı             │
+└─────────────────────────────────────────────────────────┘
+```
 
 ---
 
