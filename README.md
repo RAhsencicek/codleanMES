@@ -29,9 +29,9 @@ Geleneksel OEE panelleri size sadece makinenin "bozulduğunu" veya "durduğunu" 
 | **SHAP XAI** | ✅ Entegre | Lazy evaluation: Risk > %50'de çalışır (~100ms) | 2026-03-13 |
 | **NLG Motor** | ✅ Canlı | Türkçe açıklamalar üretiliyor | 2026-03-13 |
 | **DLIME Fallback** | ✅ Sigorta | XGBoost dışı modeller için backup | 2026-03-13 |
-| **Physics-Informed (Faz 1.5)** | 🚧 Aktif | Operating Minutes + Hydraulic Strain | 2026-03-20 |
-| **AI Usta Başı (Context)** | ✅ Faz 1.5 | Causal JSON kuralları (Neo4j iptal) | 2026-03-20 |
-| **Data Collection** | ✅ Otomatize | `hpr_monitor_fixed.py` içinde entegre | 2026-03-13 |
+| **Physics-Informed (Faz 1.5)** | ✅ Tamamlandı | Operating Minutes + Hydraulic Strain | 2026-03-17 |
+| **AI Usta Başı (Context)** | ✅ Tamamlandı | Causal JSON kuralları (Neo4j iptal) | 2026-03-17 |
+| **Data Collection** | ✅ Otomatize | `hpr_monitor.py` içinde entegre | 2026-03-17 |
 
 ---
 
@@ -47,16 +47,19 @@ cd kafka
 python3 -m venv venv
 source venv/bin/activate
 
-# 3. Bağımlılıkları (requirements) kurun (Opsiyonel: SHAP dahil):
+# 3. Bağımlılıkları kurun (SHAP ve matplotlib dahil):
 pip install -r requirements.txt
-pip install shap matplotlib
 
-# 4. Veri Toplama Otomatiktir
-# hpr_monitor_fixed.py başlatıldığında otomatik olarak Kafka'dan veri toplar
+# 4. Yapılandırma Dosyası
+# Not: limits_config.yaml dosyası config/limits_config.yaml'e sembolik linktir.
+# Ana yapılandırma config/limits_config.yaml içindedir.
+
+# 5. Veri Toplama Otomatiktir
+# hpr_monitor.py başlatıldığında otomatik olarak Kafka'dan veri toplar
 # Ayrı bir servis başlatmaya gerek yok
 
-# 5. HPR (Hidrolik Pres) Canlı İzleme Terminalini (App) Başlatın:
-PYTHONPATH=. python3 src/app/hpr_monitor_fixed.py
+# 6. HPR (Hidrolik Pres) Canlı İzleme Terminalini (App) Başlatın:
+PYTHONPATH=. python3 src/app/hpr_monitor.py
 ```
 
 Makine izleme ve uyarı dökümünü terminalden göreceksiniz. Arıza modellerinin tahminini `data/ml_training_data.csv` oluşturucusundan takip edebilirsiniz.
@@ -100,68 +103,11 @@ Sistemimiz sıradan bir veri okuyucu değildir. Makineden fırlayan anlık, gür
   <i>Şekil 2: 4-Katmanlı Hibrit Yapay Zeka Fabrikasyon Mimarisi</i>
 </div>
 
-Pipeline mimarimiz, Kafka'dan ham veriyi okuyup teknisyene anlamlı bir uyarı üretene kadar dört ana katmandan (+1 Bağlam Katmanı) geçirir. Her katman bir öncekinden temizlenmiş ve zenginleştirilmiş veri alır. Veri akışı şu teknik süzgeçlerden geçer:
+Pipeline mimarimiz, Kafka'dan ham veriyi okuyup teknisyene anlamlı bir uyarı üretene kadar dört ana katmandan (+1 Bağlam Katmanı) geçirir. Her katman bir öncekinden temizlenmiş ve zenginleştirilmiş veri alır.
 
-```text
-┌─────────────────────────────────────────────────────────┐
-│                    KAFKA CONSUMER                       │
-│          mqtt-topic-v2 @ 10.71.120.10:7001              │
-│                                                         │
-│  Her ~10 saniyede bir tüm makinelerin snapshot'ı gelir. │
-│  Biz sadece okuruz, sisteme müdahale etmeyiz.           │
-└───────────────────────┬─────────────────────────────────┘
-                        │  Ham JSON mesajı
-                        │  (string'ler, UNAVAILABLE'lar,
-                        │   gecikmiş timestamp'lar dahil)
-                        ▼
-┌─────────────────────────────────────────────────────────┐
-│     [YENİ] VERİ TOPLAYICI: window_collector.py          │
-│                                                         │
-│  Ham Kafka verisini analiz katmanından bağımsız dinler. │
-│  ML modeli için canlı eğitim verisini (live_windows)    │
-│  oluşturarak hibrit yaklaşıma zemin hazırlar.           │
-└───────────────────────┬─────────────────────────────────┘
-                        │  Ham JSON mesajı devam eder
-                        ▼
-┌─────────────────────────────────────────────────────────┐
-│         KATMAN 0: VERİ GİRİŞ & DOĞRULAMA                │
-│                                                         │
-│  "Bu veri güvenilir mi, işlenebilir mi?"                │
-│  ÇIKIŞ: Temiz, tip-güvenli, işlenmeye hazır veri        │
-└───────────────────────┬─────────────────────────────────┘
-                        │  Doğrulanmış veri paketi
-                        ▼
-┌─────────────────────────────────────────────────────────┐
-│         KATMAN 1: STATE STORE (Bellek)                  │
-│                                                         │
-│  "Bu makinenin geçmişini ve bağlamını biliyorum."       │
-│  ÇIKIŞ: Her sensörün trend hesabı için gereken geçmiş   │
-└───────────────────────┬─────────────────────────────────┘
-                        │  Zenginleştirilmiş durum verisi
-                        ▼
-┌─────────────────────────────────────────────────────────┐
-│         KATMAN 2: ANALİZ MOTORU                         │
-│                                                         │
-│  "Bu makinede risk var mı? Varsa ne kadar acil?"        │
-│  ÇIKIŞ: RiskEvent (skor, neden, ETA, hangi sensör)      │
-└───────────────────────┬─────────────────────────────────┘
-                        │  Risk skoru ≥ eşik ise devam
-                        ▼
-┌─────────────────────────────────────────────────────────┐
-│         [YENİ] KATMAN 2.5: BAĞLAM MOTORU (USTA BAŞI)    │
-│                                                         │
-│  "Bu arızanın KÖK NEDENİ (Root Cause) nedir?"           │
-│  ÇIKIŞ: Nedensel Açıklama (Örn: Termal Stres)           │
-└───────────────────────┬─────────────────────────────────┘
-                        │  Zenginleştirilmiş Bağlam
-                        ▼
-┌─────────────────────────────────────────────────────────┐
-│         KATMAN 3: ALERT ENGINE                          │
-│                                                         │
-│  "Teknisyen ne görüyor? Ne zaman, nasıl bildirilecek?"  │
-│  ÇIKIŞ: Teknisyen ekranı + PostgreSQL kaydı             │
-└─────────────────────────────────────────────────────────┘
-```
+> 📚 **Detaylı mimari için:** [`docs/pipeline_mimarisi.md`](docs/pipeline_mimarisi.md)
+> 
+> 📚 **Katman detayları için:** [`docs/pipeline_detay_katman0.md`](docs/pipeline_detay_katman0.md) → [`katman3.md`](docs/pipeline_detay_katman3.md)
 
 ### 🟢 KATMAN 0: Ağ Geçidi & Güvenlik Görevlisi (Gateway Layer)
 Bu katman **güvenlik görevlisi** gibi davranır. Sensörlerden fırlayan devasa Kafka verisi ana sisteme ulaşmaya çalışırken filtrelenir. Eğer veri bozuksa yapay zeka yanlış kararlar alabilir, bu nedenle katı kurallar uygulanır:

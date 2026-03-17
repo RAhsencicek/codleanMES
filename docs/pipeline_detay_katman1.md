@@ -2,11 +2,31 @@
 
 > **Son güncelleme:** 2026-03-13  
 > **Durum:** ✅ Güncel  
-> **Sorumlu Modül:** `src/core/state_store.py`
+> **Sorumlu Modül:** `src/core/state_store.py`, `src/core/data_feeder.py`
+> **Veri Toplama:** `scripts/data_tools/window_collector.py`
 
 ---
 
-Bu katman pipeline'ın **belleğidir**. Tek bir Kafka mesajı anlık değeri verir ama "bu değer artıyor mu, azalıyor mu, ne kadar süredir bu seviyede?" sorularını yanıtlamak için geçmişe ihtiyaç vardır. State store her makine için bu geçmişi RAM'de tutar. Dosyası `src/core/state_store.py`.
+Bu katman pipeline'ın **belleğidir**. Tek bir Kafka mesajı anlık değeri verir ama "bu değer artıyor mu, azalıyor mu, ne kadar süredir bu seviyede?" sorularını yanıtlamak için geçmişe ihtiyaç vardır. State store her makine için bu geçmişi RAM'de tutar.
+
+### 📡 Veri Akışı (Katman 0 → Katman 1)
+
+```
+Kafka Consumer (data_feeder.py)
+        ↓
+Veri Doğrulama (validator)
+        ↓
+Window Collector (window_collector.py) → live_windows.json
+        ↓
+State Store (state_store.py) → state.json
+```
+
+**`data_feeder.py`:** Kafka'dan gelen ham veriyi okur, doğrular ve pipeline'a iletir.
+
+**`window_collector.py`:** Analiz katmanından bağımsız olarak, ML eğitimi için canlı veri pencereleri toplar. Her HPR mesajını kaydeder:
+- **Normal pencereler:** Saatte 3 adet (her makine)
+- **Fault pencereleri:** Her limit aşımı anında
+- **Çıktı:** `live_windows.json`
 
 ### 1. Ring Buffer (Kayan Pencere)
 Her sensörün son 720 ölçümü (`maxlen=720`) tutulur. Bu 10 saniyelik sıklıkla yaklaşık 2 saate denk gelir. N dolarsa en eski değer otomatik silinir. Sıcaklık gibi yavaş değişen trendler için bu pencere kritik olmakla birlikte `limits_config.yaml` üzerinden ayarlanabilir.

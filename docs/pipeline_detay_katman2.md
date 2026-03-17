@@ -34,9 +34,25 @@ Canlı pipeline `ml_predictor.py` üzerinden 3 günlük "Violation Log" veri ser
 ### TreeSHAP (Açıklanabilir AI / XAI):
 Model siyah kutu (black-box) değildir! Modele her tahmininde **"Neden %85 risk verdin?"** sorusunu sorarak Şapley istatistiksel katkılarını döndürür (`shap_analyzer.py`).
 - **Örnek SHAP Çıktısı:** `{"total_faults_window": +0.173, "active_sensors": +0.155}`
+- **Performans:** Risk > %50 olduğunda çalışır (~100ms)
+
+### DLIME Fallback (Deterministic LIME)
+TreeSHAP sadece ağaç tabanlı modeller (XGBoost, Random Forest) ile çalışır. **DLIME (Deterministic LIME)** diğer model türleri için "sigorta" görevi görür:
+- **AHC Clustering:** Veriyi otomatik kümelere ayırır
+- **Lokal Ridge Regresyon:** Her küme için basit, açıklanabilir model
+- **Fallback:** SHAP başarısız olursa DLIME devreye girer
+- **Deterministik:** Rastgelelik yok, tekrarlanabilir sonuçlar
+- **Konum:** `src/analysis/dlime_explainer.py`
 
 ### NLG (Doğal Dil Üretimi)
 Teknisyene SHAP değerleri gibi teknik matematiksel loglar gitmez. `nlg_engine.py` modülü `CodleanNLGEngine` sınıfı ile bu sayıları Türkçe insan diline çevirir ve "Acil Müdahale / ETA" önerisi ekler.
+
+**NLG Motoru Özellikleri:**
+- **Şablon Tabanlı:** Önceden tanımlı Türkçe şablonlar
+- **Bağlam Farkındalığı:** Risk seviyesine göre farklı ton (Düşük/Orta/Yüksek/Kritik)
+- **Aksiyon Önerileri:** Her risk seviyesi için spesifik bakım talimatları
+- **Physics-Informed:** Fizik kurallarından gelen ek açıklamalar (Hydraulic Strain, Thermal Stress)
+- **Konum:** `src/analysis/nlg_engine.py`
 
 > **Örnek Çalışan NLG Çıktısı (Risk: %100):**
 > 🔍 **AI Usta Başı Analizi (Neden Riskli?):**

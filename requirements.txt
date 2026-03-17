@@ -1,0 +1,32 @@
+# Codlean MES - Python Bağımlılıkları
+# Kurulum: pip install -r requirements.txt
+
+# Kafka bağlantısı
+confluent-kafka>=2.3.0
+
+# Veri işleme
+numpy>=1.26.0
+pandas>=2.1.0
+
+# Makine öğrenmesi
+scikit-learn>=1.3.0
+xgboost>=2.0.0
+lightgbm>=4.1.0
+
+# XAI (Açıklanabilir AI)
+shap>=0.45.0
+
+# Görselleştirme
+matplotlib>=3.8.0
+
+# YAML yapılandırma
+pyyaml>=6.0.1
+
+# Terminal UI
+rich>=13.7.0
+
+# Bilimsel hesaplama (DLIME için)
+scipy>=1.12.0
+
+# Diğer yardımcı kütüphaneler
+tqdm>=4.66.0

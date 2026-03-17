@@ -59,7 +59,7 @@ Pipeline, Kafka'dan ham veriyi okuyup teknisyene anlamlı bir uyarı üretene ka
 
 | Modül | Sorumluluk | Girdi | Çıktı |
 |-------|-----------|-------|-------|
-| `src/app/hpr_monitor_fixed.py` | Ana Canlı İzleme Sistemi | Kafka topic | UI Console Log |
+| `src/app/hpr_monitor.py` | Ana Canlı İzleme Sistemi | Kafka topic | UI Console Log |
 | `src/core/data_validator.py` | Schema, UNAVAILABLE, spike, stale, startup | Raw JSON | Temiz dict veya None |
 | `src/core/state_store.py` | Ring buffer, EWMA, confidence, boolean | Temiz dict | Güncellenen state |
 | `src/analysis/threshold_checker.py` | Anlık değer vs config limiti | Sensör değeri + limits | ThresholdSignal |
