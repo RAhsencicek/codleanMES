@@ -13,11 +13,13 @@
 > "Teknisyen onayı: Min/max limit aşımı = GERÇEK FAULT (kesin doğru)"
 > 
 > "Model alarmı false positive olabilir, ama limit aşımı KESİN hatadır"
+>
+> "Arıza anında teknisyene sadece skoru değil, KÖK NEDENİ (Bağlamı) sunmalıyız."
 
-**İKİ KATMANLI HYBRID SİSTEM:**
+**ÜÇ KATMANLI HYBRID (BAĞLAM-FARKINDALIKLI) SİSTEM:**
 
 1. **Rule-Based Fault Detection (KESİN)**
-   - limits_config.yaml kullanılıyor
+   - `limits_config.yaml` kullanılıyor
    - Min/max limit kontrolü
    - ✅ Açıklanabilir: "Hangi sensör, hangi limit, ne kadar aşıldı"
    - ✅ Güvenilir: Teknisyen onaylı
@@ -29,6 +31,13 @@
    - ✅ Trend analizi: "Sıcaklık 3 gündür yükseliyor"
    - ✅ Multi-sensor correlation
    - ⚠️ Olasılık: %50-80 confidence
+
+3. **[YENİ] AI Usta Başı / Bağlam Motoru (PHYSICS-INFORMED)**
+   - Olaylar arası nedensellik bağı kurar ve makine fiziğini anlar (Faz 1.5).
+   - Neo4j yerine, RAM tabanlı hızlı Causal JSON kuralları işletir.
+   - ✅ Açıklanabilir AI (XAI): "Hidrolik zorlanma tespit edildi."
+   - ✅ Actionable NLG: Şablonlarla teknisyene Türkçe bakım tavsiyesi verir.
+   - ✅ Operating Minutes ile soğuk makine toleransı tanır.
 
 ---
 
@@ -241,12 +250,13 @@ Belirtiler:
    → False alarm çok
 ```
 
-**HYBRID ÇÖZÜM:**
+**HYBRID (BAĞLAMLI) ÇÖZÜM:**
 ```python
-✅ Rule-Based (kesin) + ML Pre-Fault (olası):
+✅ Rule-Based (kesin) + AI Usta Başı (Bağlam) + ML Pre-Fault (olası):
    → Rule-based: "main_pressure > 120 → FAULT" (açıklanabilir)
+   → AI Usta Başı: "Bu bir Termal Stres olayıdır, çünkü sıcaklık da fırlamış." (Kök Neden)
    → ML: "Önümüzdeki 30 dk fault olasılığı %75" (erken uyarı)
-   → İkisi birlikte: Güvenilir + Erken uyarı
+   → Hepsi birlikte: Güvenilir, Açıklanabilir ve Tam Zamanlı Koruma
 ```
 
 ---
@@ -816,8 +826,8 @@ Güncellenen Dosyalar:
 ☐ VPN bağlantısını kontrol et (OpenVPN / tam-tunnel)
 ☐ Kafka broker erişimini test et:
    → python3 test_kafka_connection.py
-☐ hpr_monitor.py çalıştırma hazırlığı:
-   → python3 hpr_monitor.py --test-run
+☐ hpr_monitor_fixed.py çalıştırma hazırlığı:
+   → PYTHONPATH=. python3 src/app/hpr_monitor_fixed.py --test-run
 ☐ Terminal multiplexer başlat (tmux/screen)
 ☐ Log dosyalarını aç:
    → tail -f logs/alerts.log
@@ -827,7 +837,7 @@ Güncellenen Dosyalar:
 
 ```markdown
 1. ☐ Live Pipeline Testi (09:00 - 10:30)
-   → python3 hpr_monitor.py
+   → PYTHONPATH=. python3 src/app/hpr_monitor_fixed.py
    → 2 saat alert topla
    → Latency ölç
    → Alert distribution analizi
@@ -866,8 +876,8 @@ Güncellenen Dosyalar:
 
 ```bash
 # Terminal komutları hazır
-python3 hpr_monitor.py              # Main pipeline
-python3 test_kafka_connection.py    # Connection check
+PYTHONPATH=. python3 src/app/hpr_monitor_fixed.py  # Main pipeline
+python3 test_kafka_connection.py                   # Connection check
 tail -f logs/alerts.log             # Alert monitoring
 python3 analyze_alert_history.py    # Alert analysis
 
@@ -1032,7 +1042,7 @@ Code Quality: Production-ready
 
 Komutlar:
   python3 test_kafka_connection.py
-  python3 hpr_monitor.py --test-run
+  PYTHONPATH=. python3 src/app/hpr_monitor_fixed.py --test-run
 ```
 
 **Eğer Kafka çalışıyorsa:**
@@ -1364,9 +1374,9 @@ Cevap: "Şimdi açtık, tekrar dene"
 
 #### 🚀 CANLI PIPELINE TESTİ BAŞLADI
 
-**09:45 — hpr_monitor.py Çalıştırıldı:**
+**09:45 — hpr_monitor_fixed.py Çalıştırıldı:**
 ```bash
-python3 hpr_monitor.py
+PYTHONPATH=. python3 src/app/hpr_monitor_fixed.py
 ```
 
 **Aktif Durum:**

@@ -342,9 +342,6 @@ def build_dashboard() -> Layout:
     # TÜM MAKİNELERİ AL (Sıralı)
     all_hpr = sorted([mid for mid in machine_data.keys() if mid.startswith("HPR")])
     
-    # DEBUG: Makine sayısını logla
-    add_log(f"Dashboard: {len(all_hpr)} makine bulundu: {', '.join(all_hpr)}", "dim")
-    
     if not all_hpr:
         # Henüz veri yok
         status_text = Text("\n⏳ HPR verisi bekleniyor...\n", style="dim", justify="center")
@@ -425,9 +422,6 @@ def refresh_dashboard():
     """
     # Config'den tüm HPR makinelerini al
     all_hpr = sorted(HPR_MACHINES)
-    
-    # DEBUG
-    add_log(f"Config'de {len(all_hpr)} makine: {', '.join(all_hpr[:3])}...", "dim")
     
     for mid in all_hpr:
         ms = state.get(mid, {})

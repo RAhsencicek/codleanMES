@@ -13,7 +13,7 @@ Her makine için geçmişi RAM'de tutar.
 
 from collections import deque, defaultdict
 from datetime import datetime
-import tempfile, os, json, logging
+import tempfile, os, json, logging, time
 
 log = logging.getLogger("state_store")
 
@@ -39,9 +39,28 @@ def _new_machine_state(window: int = DEFAULT_WINDOW) -> dict:
 
 
 def ensure_machine(state: dict, machine_id: str, window: int = DEFAULT_WINDOW):
-    """Makine henüz yoksa başlatır."""
+    """Makine henüz yoksa başlatır ve startup zamanını kaydeder."""
     if machine_id not in state:
         state[machine_id] = _new_machine_state(window)
+        state[machine_id]["startup_ts"] = time.time()
+        log.info("Yeni makine kaydedildi: %s (startup_ts ayarlandı)", machine_id)
+
+
+
+# ─── Operating Minutes (Faz 1.5 — Physics-Informed) ─────────────────────────
+
+def get_operating_minutes(state: dict, machine_id: str) -> float:
+    """
+    Makinenin kaç dakikadır aktif olduğunu döner.
+    Startup zamanı bilinmiyorsa 0.0 döner.
+    """
+    ms = state.get(machine_id)
+    if ms is None:
+        return 0.0
+    ts = ms.get("startup_ts")
+    if ts is None:
+        return 0.0
+    return round((time.time() - ts) / 60, 1)
 
 
 # ─── EWMA güncelleme ─────────────────────────────────────────────────────────

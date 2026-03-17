@@ -284,11 +284,10 @@ def generate_hybrid_alert(
     # ─── KATMAN 1: RULE-BASED FAULT (KESİN) ──────────────────────────
     faults = detect_faults_direct(machine_id, sensor_values, limits_config)
     
+    hard_faults = [f for f in faults if f['severity'] != 'DÜŞÜK']
+    soft_faults = [f for f in faults if f['severity'] == 'DÜŞÜK']
+    
     if faults:
-        # Soft limit fault'larını ayıkla (severity=DÜŞÜK olanlar)
-        hard_faults = [f for f in faults if f['severity'] != 'DÜŞÜK']
-        soft_faults = [f for f in faults if f['severity'] == 'DÜŞÜK']
-        
         # Eğer HARD_FAULT varsa, onu kullan
         if hard_faults:
             # Multi-sensor fault check (sadece hard faults)
@@ -360,8 +359,8 @@ def generate_hybrid_alert(
             alerts.append(alert)
     
     # ─── KATMAN 2: ML PRE-FAULT PREDICTION (OLASI) ───────────────────
-    # Sadece fault yoksa ML uyarısı ver (alert spam önleme)
-    if not faults and ml_predictor:
+    # Sadece HARD fault yoksa ML uyarısı ver (alert spam önleme)
+    if not hard_faults and ml_predictor:
         pre_fault = predict_pre_fault_direct(
             machine_id, 
             window_features, 
@@ -405,8 +404,13 @@ def generate_hybrid_alert(
     # ─── ALERT PRIORITIZATION ────────────────────────────────────────
     # Eğer birden fazla alert varsa, en önemliyi seç
     if len(alerts) > 1:
-        # FAULT her zaman öncelikli
-        alerts.sort(key=lambda x: x['type'] == 'FAULT', reverse=True)
+        def get_priority(atype):
+            if atype == 'FAULT': return 3
+            if atype == 'PRE_FAULT_WARNING': return 2
+            if atype == 'SOFT_LIMIT_WARNING': return 1
+            return 0
+            
+        alerts.sort(key=lambda x: get_priority(x['type']), reverse=True)
         # Sadece ilk alert'i döndür (spam önleme)
         alerts = alerts[:1]
     

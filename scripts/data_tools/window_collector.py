@@ -136,9 +136,16 @@ def record(machine_id: str, sensor_values: dict):
         sensor_values: {sensor_name: float_value, ...}
                        HPR_SENSORS dışındaki sensörler yok sayılır.
     """
+    import logging
+    log = logging.getLogger("window_collector")
+    
+    log.debug(f"[WC] record called: {machine_id}, sensors: {list(sensor_values.keys()) if sensor_values else 'EMPTY'}")
+    
     if not machine_id.startswith("HPR"):
+        log.debug(f"[WC] SKIPPED: {machine_id} does not start with HPR")
         return
     if not sensor_values:
+        log.debug(f"[WC] SKIPPED: {machine_id} has no sensor values")
         return
 
     ts = _now_iso()

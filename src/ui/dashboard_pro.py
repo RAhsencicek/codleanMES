@@ -10,7 +10,16 @@
 
 import time
 import random
+import os
+import sys
 from datetime import datetime
+
+# Add root folder to sys.path so we can import src.
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+
+from src.core.data_feeder import HistoricalDataFeeder
+from src.alerts.alert_engine import generate_hybrid_alert
+
 from rich.console import Console
 from rich.live import Live
 from rich.panel import Panel
@@ -172,116 +181,126 @@ def add_event(machine: str, message: str, style: str):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# DİNAMİK SİMÜLASYON MOTORU — Değerler sürekli değişir
+# TARİHSEL VERİ & AI MOTORU ENTEGRASYONU (Historical Replay)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def simulate_tick():
+def construct_limits_config():
+    """AI Motoruna vereceğimiz dinamik limit ayarları"""
+    config = {}
+    for mid, sensors in SENSOR_CONFIGS.items():
+        config[mid] = {}
+        for sensor in sensors:
+            config[mid][sensor] = {
+                "max": SENSOR_LIMITS.get(sensor, {}).get("max", 100),
+                "min": SENSOR_LIMITS.get(sensor, {}).get("min", 0)
+            }
+    # Ekstra sensörler için genel limitler
+    for s_name, s_data in SENSOR_LIMITS.items():
+        for mid in config:
+            if s_name not in config[mid]:
+                config[mid][s_name] = {"max": s_data["max"], "min": s_data.get("min", 0)}
+                
+    return config
+
+def process_historical_tick(feeder: HistoricalDataFeeder, limits_config: dict) -> bool:
     """
-    SUNUM MODU simülasyonu:
-    - Daha hızlı ve belirgin değişimler
-    - Net renk geçişleri
-    - Zengin içerik (ETA, öneri)
+    Geçmişteki gerçek Kafka verilerini(JSON) okur, UI'deki sayıları doldurur
+    ve bu verileri AI Risk motoruna (alert_engine) göndererek sonucu ekrana yansıtır.
     """
-    for mid, machine in MACHINES.items():
-        prev_status = machine["status"]
-        max_pct = 0
-        critical_sensor = None
-        warning_sensor = None
-        issues = []
+    events = feeder.get_next_tick(batch_size=8) # Saniyede 8 event oku (zamanı hızlandırır)
+    if not events:
+        add_event("SİSTEM", "🏁 Tarihsel Veri Akışı Tamamlandı (Replay Sonu)", "bold yellow")
+        return False
         
-        for sensor_key, sensor in machine["sensors"].items():
-            # %5 ihtimalle (çok daha nadir) yeni hedef belirle (Daha yumuşak geçişler)
-            if random.random() < 0.05:
-                # Daha yumuşak simülasyon
-                roll = random.random()
-                if roll < 0.05:  # %5 kritik
-                    sensor["target_pct"] = random.uniform(93, 99)
-                elif roll < 0.15:  # %10 uyarı
-                    sensor["target_pct"] = random.uniform(83, 94)
-                elif roll < 0.40:  # %25 normale dön
-                    sensor["target_pct"] = random.uniform(35, 60)
-                else:  # Normal dalgalanma
-                    sensor["target_pct"] = random.uniform(40, 75)
+    machine_updates = {}
+    for e in events:
+        mid = e["machine_id"]
+        sensor = e["sensor"]
+        val = e["value"]
+        
+        if mid not in machine_updates:
+            machine_updates[mid] = {}
+        machine_updates[mid][sensor] = val
+        
+        # UI'daki sensör değerlerini güncelle
+        if mid in MACHINES:
+            # Eğer sensör UI'da yoksa geçici ekle ki barı görebilelim
+            if sensor not in MACHINES[mid]["sensors"]:
+                MACHINES[mid]["sensors"][sensor] = {
+                    "max": e.get("limit_max", 150),
+                    "unit": "", "prev_pct": 0, "pct": 0, "trend": "up"
+                }
             
-            # Çok yavaş kaydırma (Random Walk)
-            current = sensor["pct"]
-            target = sensor["target_pct"]
-            diff = target - current
+            s_data = MACHINES[mid]["sensors"][sensor]
+            s_data["value"] = round(val, 1)
             
-            # Hedefe doğru çok küçük adımlarla (%2-5) yaklaş
-            step = diff * random.uniform(0.02, 0.05)
-            # Minik rastgele dalgalanma (titreme efekti)
-            new_pct = current + step + random.uniform(-0.4, 0.4)
-            new_pct = max(20, min(99, new_pct))
+            # Yüzdeliği Hesapla
+            max_val = s_data.get("max", e.get("limit_max", 100))
+            if max_val:
+                pct = (val / max_val) * 100
+                s_data["pct"] = min(100, max(0, pct))
             
-            sensor["pct"] = round(new_pct)
-            sensor["value"] = round(new_pct / 100 * sensor["max"], 1)
-            
-            # Trend
-            if step > 0.8:
-                sensor["trend"] = "up"
-            elif step < -0.8:
-                sensor["trend"] = "down"
+            # Trend Belirle
+            prev_pct = s_data.get("prev_pct", 0)
+            if s_data["pct"] > prev_pct + 1:
+                s_data["trend"] = "up"
+            elif s_data["pct"] < prev_pct - 1:
+                s_data["trend"] = "down"
             else:
-                sensor["trend"] = "stable"
+                s_data["trend"] = "stable"
+            s_data["prev_pct"] = s_data["pct"]
+
+    # --- AI MOTORU DEĞERLENDİRMESİ ---
+    for mid, updates in machine_updates.items():
+        if mid not in MACHINES: continue
+        machine = MACHINES[mid]
+        
+        # Makinenin o anlık tüm sensör değerlerini topla
+        current_values = {s: d["value"] for s, d in machine["sensors"].items() if "value" in d}
+        
+        # HYBRID AI ÇAĞRISI (Risk Analizi)
+        alerts = generate_hybrid_alert(mid, current_values, {}, limits_config, None)
+        
+        prev_status = machine["status"]
+        
+        if alerts:
+            alert = alerts[0] # En yüksek öncelikli alarm (FAULT veya WARNING)
             
-            # En yüksek değeri takip et
-            if new_pct > max_pct:
-                max_pct = new_pct
-                if new_pct >= 95:
-                    critical_sensor = sensor_key
-                elif new_pct >= 85:
-                    warning_sensor = sensor_key
+            machine["issues"] = [r.split('→')[0].strip() for r in alert["reasons"]][:2]
+            machine["recommendation"] = alert.get("recommendation", "İnceleme gerekli")
+            machine["risk_score"] = int(alert.get("confidence", 0.8) * 100)
             
-            # Sorun listesi oluştur
-            if new_pct >= 90:
-                tr_name = SENSOR_TR.get(sensor_key, sensor_key)
-                issues.append(f"{tr_name} limiti %{int(new_pct)}'e ulaştı!")
-            elif new_pct >= 85:
-                tr_name = SENSOR_TR.get(sensor_key, sensor_key)
-                issues.append(f"{tr_name} uyarı seviyesinde")
-        
-        # ═══ DURUM DEĞİŞİMİ + ZENGİN İÇERİK ═══
-        
-        machine["issues"] = issues[:3]
-        
-        if max_pct >= 95:
-            machine["status"] = "KRİTİK"
-            machine["severity"] = "KRİTİK"
-            machine["risk_score"] = min(99, int(max_pct) + random.randint(0, 4))
-            machine["eta_min"] = max(3, int((100 - max_pct) * 2) + random.randint(-2, 2))
-            if critical_sensor:
-                machine["recommendation"] = RECOMMENDATIONS.get(critical_sensor, "Acil müdahale gerekli!")
-                
-        elif max_pct >= 85:
-            machine["status"] = "UYARI"
-            machine["severity"] = "ORTA"
-            machine["risk_score"] = min(80, int(max_pct) + random.randint(-3, 3))
-            machine["eta_min"] = max(15, int((100 - max_pct) * 5) + random.randint(-5, 5))
-            if warning_sensor:
-                machine["recommendation"] = RECOMMENDATIONS.get(warning_sensor, "İzlemeyi sürdürün")
-                
+            if alert["type"] == "FAULT":
+                machine["status"] = "KRİTİK"
+                machine["severity"] = "KRİTİK"
+                machine["eta_min"] = random.randint(1, 5) # Çok az vakit var
+            elif alert["type"] == "PRE_FAULT_WARNING":
+                machine["status"] = "UYARI"
+                machine["severity"] = "ORTA"
+                machine["eta_min"] = random.randint(15, 30)
+            elif alert["type"] == "SOFT_LIMIT_WARNING":
+                machine["status"] = "UYARI"
+                machine["severity"] = "DÜŞÜK"
+                machine["eta_min"] = random.randint(30, 60)
         else:
             machine["status"] = "NORMAL"
-            machine["severity"] = ""
-            machine["risk_score"] = max(5, int(max_pct * 0.3))
-            machine["eta_min"] = 0
+            machine["severity"] = "NORMAL"
+            machine["issues"] = []
             machine["recommendation"] = ""
-        
-        # ═══ LOG OLAYLARI ═══
-        
+            machine["risk_score"] = random.randint(5, 15)
+            machine["eta_min"] = 0
+            
+        # Olay (Log) Akışı Güncellemesi
         new_status = machine["status"]
         if new_status != prev_status:
             if new_status == "KRİTİK":
-                sensor_name = SENSOR_TR.get(critical_sensor, "Sensör") if critical_sensor else "Sistem"
-                add_event(mid, f"🚨 KRİTİK: {sensor_name} tehlikeli seviyede!", "bold red")
+                add_event(mid, f"🚨 AI-ANALİZ: Kritik Anomali Tespit Edildi!", "bold red")
             elif new_status == "UYARI":
-                sensor_name = SENSOR_TR.get(warning_sensor, "Sensör") if warning_sensor else "Sistem"
-                add_event(mid, f"⚠️ Uyarı: {sensor_name} yükseliyor", "yellow")
-            elif new_status == "NORMAL" and prev_status in ["KRİTİK", "UYARI"]:
-                add_event(mid, f"✅ Değerler normale döndü, sistem stabil", "green")
-        
-        machine["prev_status"] = new_status
+                add_event(mid, f"⚠️ AI-ANALİZ: Limitlere yaklaşılıyor, risk artıyor.", "yellow")
+            elif new_status == "NORMAL":
+                add_event(mid, f"✅ Parametreler normale döndü.", "green")
+
+    return True
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -533,21 +552,33 @@ def build_dashboard() -> Layout:
 
 def main():
     console.print("\n[bold cyan]🚀 Codlean MES Canlı Dashboard başlatılıyor...[/bold cyan]")
-    console.print("[dim]   Sunum Modu: Dinamik renk değişimi aktif[/dim]\n")
+    console.print("[dim]   Mod: HISTORICAL REPLAY (Gerçek Geşmiş Veriler Akıyor)[/dim]\n")
     time.sleep(1)
     
-    # Makineleri başlat
+    # 1. Start Machines and AI config
     init_machines()
+    limits_config = construct_limits_config()
     
-    # Başlangıç log'u
-    add_event("SİSTEM", "🟢 Dashboard başlatıldı, 6 makine izleniyor", "green")
+    # 2. Start Data Feeder
+    log_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../data/violation_log.json"))
+    if not os.path.exists(log_file):
+        console.print(f"[bold red]Hata: Veri dosyası bulunamadı ({log_file})[/bold red]")
+        sys.exit(1)
+        
+    feeder = HistoricalDataFeeder(log_file)
+    feeder.current_index = 0 # Baştan başlat
+
+    add_event("SİSTEM", f"🟢 Replay Başladı: {feeder.total_events} olay yüklendi.", "green")
     
     try:
-        with Live(build_dashboard(), refresh_per_second=1, screen=True, console=console) as live:
+        with Live(build_dashboard(), refresh_per_second=2, screen=True, console=console) as live:
             while True:
-                time.sleep(2.0)  # 2 saniyede bir daha yumuşak güncelleme
-                simulate_tick()
+                time.sleep(1.0)  # Her 1 Saniyede 1 Tick at (Olayları akıt)
+                has_more = process_historical_tick(feeder, limits_config)
                 live.update(build_dashboard())
+                if not has_more:
+                    time.sleep(3) # Bittiğinde ekranda 3 sn kalsın
+                    break
     except KeyboardInterrupt:
         console.print("\n[green]✅ Dashboard kapatıldı.[/green]")
 

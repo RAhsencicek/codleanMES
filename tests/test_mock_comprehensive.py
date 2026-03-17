@@ -29,9 +29,9 @@ print("TEST 1: RULE-BASED FAULT DETECTION")
 print("="*55)
 
 sensor_values = {
-    "main_pressure": 126.5,            # max: 110 → %15 aşım
-    "horizontal_press_pressure": 125.3, # max: 120 → %4.4 aşım
-    "oil_tank_temperature": 38.5,      # NORMAL
+    "main_pressure": 126.5,            # max: 110 → %15 aşım (KRİTİK)
+    "horizontal_press_pressure": 125.3, # max: 120 → %4.4 aşım (YÜKSEK)
+    "oil_tank_temperature": 35.0,      # max: 45 → %77 (normal, soft limit değil)
 }
 
 faults = detect_faults_direct("HPR001", sensor_values, LIMITS)
@@ -42,7 +42,10 @@ for i, fault in enumerate(faults, 1):
     print(f"    Sensor: {fault['sensor']}")
     print(f"    Value: {fault['value']:.1f}")
     print(f"    Limit: {fault['limit']:.1f}")
-    print(f"    Over ratio: %{fault['over_ratio']*100:.1f}")
+    if 'over_ratio' in fault:
+        print(f"    Over ratio: %{fault['over_ratio']*100:.1f}")
+    elif 'near_ratio' in fault:
+        print(f"    Near ratio: %{fault['near_ratio']*100:.1f} (yaklaşıyor)")
     print(f"    Severity: {fault['severity']}")
 
 assert len(faults) == 2, "2 fault bulunmalıydı!"
@@ -266,12 +269,12 @@ print("TEST 8: NORMAL OPERASYON (ALERT YOK)")
 print("="*55)
 
 sensor_values_all_normal = {
-    "main_pressure": 95.0,
-    "horizontal_press_pressure": 105.0,
-    "oil_tank_temperature": 38.0,
-    "lower_ejector_pressure": 88.0,
-    "horitzonal_infeed_speed": 150.0,
-    "vertical_infeed_speed": 120.0,
+    "main_pressure": 80.0,              # max: 110 → %72 (normal)
+    "horizontal_press_pressure": 90.0,  # max: 120 → %75 (normal)
+    "oil_tank_temperature": 35.0,       # max: 45 → %77 (normal)
+    "lower_ejector_pressure": 80.0,     # max: 110 → %72 (normal)
+    "horitzonal_infeed_speed": 120.0,   # max: 300 → %40 (normal)
+    "vertical_infeed_speed": 100.0,     # max: 250 → %40 (normal)
 }
 
 normal_alerts = generate_hybrid_alert(

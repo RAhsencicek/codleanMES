@@ -68,6 +68,9 @@ class MLPredictor:
         self._feature_names: list[str] = []
         self._importances:   np.ndarray | None = None
         self._active        = False
+        self._shap_explainer = None
+        self._dlime_explainer = None
+        self._nlg_engine    = None
         self._load()
 
     # ─── Yükleme ─────────────────────────────────────────────────────────────
@@ -101,6 +104,27 @@ class MLPredictor:
         else:
             self._importances = None
 
+        # SHAP ve NLG Motorlarını Başlat
+        try:
+            import shap
+            import sys as _local_sys
+            import os as _local_os
+            
+            # src path to path 
+            root_dir = _local_os.path.dirname(_local_os.path.dirname(_local_os.path.abspath(__file__)))
+            if root_dir not in _local_sys.path:
+                _local_sys.path.append(root_dir)
+                
+            from src.analysis.nlg_engine import CodleanNLGEngine
+            from src.analysis.dlime_explainer import DLIMEExplainer
+            
+            self._shap_explainer = shap.TreeExplainer(self._model)
+            self._dlime_explainer = DLIMEExplainer(self._model, os.path.join(_DIR, "..", "data", "ml_training_data.csv"))
+            self._nlg_engine = CodleanNLGEngine()
+            log.info("✅ XAI (SHAP/DLIME) ve NLG Motoru başarıyla yüklendi.")
+        except Exception as e:
+            log.warning("⚠️ SHAP/DLIME/NLG başlatılamadı: %s", e)
+
         self._active = True
 
     @property
@@ -131,7 +155,7 @@ class MLPredictor:
 
         try:
             feature_vector = self._build_features(machine_id, state)
-            return self._predict(feature_vector)
+            return self._predict(feature_vector, machine_id)
         except Exception as e:
             log.exception("predict_risk hatası (%s): %s", machine_id, e)
             return MLRiskResult(score=0.0, confidence=0.0, active=False,
@@ -231,7 +255,7 @@ class MLPredictor:
 
     # ─── Tahmin ve skor üretimi ──────────────────────────────────────────────
 
-    def _predict(self, X: np.ndarray) -> MLRiskResult:
+    def _predict(self, X: np.ndarray, machine_id: str) -> MLRiskResult:
         # Anomali olasılığı (sınıf 1 = FAULT/PRE-FAULT)
         if hasattr(self._model, "predict_proba"):
             proba = float(self._model.predict_proba(X)[0][1])
@@ -253,6 +277,55 @@ class MLPredictor:
         # En önemli tetikleyicileri bul
         top_features = self._get_top_features(X)
         explanation  = self._build_explanation(proba, top_features)
+        
+        # ─── SHAP / DLIME ve NLG Entegrasyonu ───
+        if self._nlg_engine and proba > 0.01:
+            shap_impacts = {}
+            used_explainer = "NONE"
+            
+            try:
+                if self._shap_explainer:
+                    shap_values = self._shap_explainer.shap_values(X)
+                    
+                    # Multi-class / 3D array handle
+                    if isinstance(shap_values, list):
+                        sv = shap_values[1][0]
+                    elif len(shap_values.shape) == 3:
+                        sv = shap_values[0, :, 1]
+                    else:
+                        sv = shap_values[0] if not hasattr(shap_values, 'values') else shap_values.values[0]
+                    
+                    # Dictionary map
+                    shap_impacts = {name: float(val) for name, val in zip(self._feature_names, sv)}
+                    used_explainer = "SHAP"
+                
+            except Exception as e:
+                log.warning("TreeSHAP hatası, DLIME fallback tetikleniyor: %s", e)
+                
+            # SHAP Çöktüyse veya yoksa DLIME Devreye Girer
+            if not shap_impacts and self._dlime_explainer:
+                import pandas as pd
+                df_inst = pd.DataFrame(X, columns=self._feature_names)
+                dlime_res = self._dlime_explainer.explain(df_inst)
+                if "error" not in dlime_res:
+                    shap_impacts = dlime_res
+                    used_explainer = "DLIME"
+
+            if shap_impacts:
+                try:
+                    # Sadece skor 0-1 arasında gönderilmeli
+                    nlg_exp = self._nlg_engine.generate_explanation(
+                        risk_score=score/100.0,
+                        shap_impacts=shap_impacts,
+                        machine_id=machine_id
+                    )
+                    if nlg_exp:
+                        # Hangi XAI'ın kullanıldığını nota ekle (debugging için)
+                        explanation = f"[{used_explainer}] " + nlg_exp
+                except Exception as e:
+                    log.error("SHAP/DLIME NLG hata: %s", e)
+                    import traceback
+                    traceback.print_exc()
 
         return MLRiskResult(
             score=score,

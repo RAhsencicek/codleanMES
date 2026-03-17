@@ -13,7 +13,8 @@ Ağırlıklandırma (confidence'a göre dinamik):
 from dataclasses import dataclass, field
 from src.analysis.threshold_checker import ThresholdSignal
 from src.analysis.trend_detector import TrendSignal
-import logging
+from src.core.state_store import get_operating_minutes
+import json, os, logging
 
 log = logging.getLogger("risk")
 
@@ -76,13 +77,110 @@ def _ensemble_weights(confidence: float) -> tuple[float, float, float]:
         return 0.55, 0.35, 0.10
 
 
+# ─── Physics-Informed Kurallar (Faz 1.5) ────────────────────────────────────
+
+# Causal Rules JSON yükleme
+_CAUSAL_RULES_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "docs", "causal_rules.json"
+)
+try:
+    with open(_CAUSAL_RULES_PATH) as _f:
+        CAUSAL_RULES = json.load(_f).get("rules", {})
+    log.info("✅ Causal Rules yüklendi: %s", list(CAUSAL_RULES.keys()))
+except Exception as _e:
+    CAUSAL_RULES = {}
+    log.warning("⚠️  Causal Rules yüklenemedi (%s): %s", _CAUSAL_RULES_PATH, _e)
+
+
+def _apply_physics_rules(
+    machine_id: str,
+    sensor_values: dict,
+    machine_limits: dict,
+    state: dict | None,
+) -> tuple[float, list[str]]:
+    """
+    Physics-Informed kuralları uygular.
+    Dönüş: (ek risk puanı, nedenler listesi)
+
+    Kural 1 — Hidrolik Zorlanma (Hydraulic Strain):
+      Ana basınç limitin %80'ini aşmasına rağmen hız %20'nin altında
+      kalıyorsa makine mekanik olarak sıkışmış demektir.
+
+    Kural 2 — Soğuk Makine Toleransı (Cold Startup Mask):
+      Makine 60 dakikadan kısa süredir çalışıyorsa, fiziksel kural
+      çıktıları %50 dampen edilir (Isınma dönemi toleransı).
+    """
+    bonus = 0.0
+    reasons = []
+
+    if not sensor_values or not machine_limits:
+        return bonus, reasons
+
+    # ─── Kural 1: Hidrolik Zorlanma ─────────────────────────────────────────
+    pressure_val = sensor_values.get("main_pressure")
+    h_speed_val  = sensor_values.get("horitzonal_infeed_speed")
+    v_speed_val  = sensor_values.get("vertical_infeed_speed")
+
+    p_limit = machine_limits.get("main_pressure", {}).get("max")
+    h_limit = machine_limits.get("horitzonal_infeed_speed", {}).get("max")
+    v_limit = machine_limits.get("vertical_infeed_speed", {}).get("max")
+
+    if pressure_val is not None and p_limit and p_limit > 0:
+        pressure_ratio = pressure_val / p_limit
+
+        # Hız değerlerini yüzdeye çevir (mutlak değer, çünkü hız eksi olabilir)
+        h_speed_ratio = abs(h_speed_val) / abs(h_limit) if (h_speed_val is not None and h_limit and h_limit != 0) else 1.0
+        v_speed_ratio = abs(v_speed_val) / abs(v_limit) if (v_speed_val is not None and v_limit and v_limit != 0) else 1.0
+
+        if pressure_ratio > 0.80 and h_speed_ratio < 0.20 and v_speed_ratio < 0.20:
+            rule_info = CAUSAL_RULES.get("hydraulic_strain", {})
+            strain_bonus = rule_info.get("risk_multiplier", 30.0)
+            explanation = rule_info.get(
+                "explanation_tr",
+                "Hidrolik zorlanma tespit edildi (basınç yüksek, hız yok)."
+            )
+            action = rule_info.get("action_tr", "")
+            bonus += strain_bonus
+            reasons.append(f"🔧 {explanation}")
+            if action:
+                reasons.append(f"🛠️  Öneri: {action}")
+            log.warning(
+                "[PHYSICS] %s: Hidrolik Zorlanma! Basınç oranı=%.1f%%, "
+                "Yatay hız=%.1f%%, Dikey hız=%.1f%% → +%.0f puan",
+                machine_id, pressure_ratio * 100, h_speed_ratio * 100,
+                v_speed_ratio * 100, strain_bonus
+            )
+
+    # ─── Kural 2: Soğuk Makine Toleransı ──────────────────────────────────
+    if state is not None:
+        op_minutes = get_operating_minutes(state, machine_id)
+        if op_minutes < 60 and bonus > 0:
+            rule_info = CAUSAL_RULES.get("cold_startup_mask", {})
+            dampen = rule_info.get("risk_multiplier", 0.5)
+            old_bonus = bonus
+            bonus = bonus * dampen
+            reasons.append(
+                f"❄️ Makine henüz {op_minutes:.0f} dakikadır çalışıyor "
+                f"(ısınma toleransı: {dampen:.0%} dampen)"
+            )
+            log.info(
+                "[PHYSICS] %s: Soğuk makine toleransı — %.0f dk. "
+                "Bonus %.0f → %.0f (%.0f%% dampen)",
+                machine_id, op_minutes, old_bonus, bonus, dampen * 100
+            )
+
+    return bonus, reasons
+
+
 def calculate_risk(
     machine_id:         str,
     threshold_signals:  list[ThresholdSignal],
     trend_signals:      list[TrendSignal],
     confidence:         float,
     sensor_values:      dict | None = None,
-    state:              dict | None = None,   # ML için State Store verisi
+    state:              dict | None = None,
+    machine_limits:     dict | None = None,   # Faz 1.5: Physics kuralları için
 ) -> RiskEvent | None:
     """
     Threshold + Trend + ML sinyallerini birleştirir.
@@ -140,6 +238,14 @@ def calculate_risk(
     ml_damp  = ml_score_raw * max(confidence, 0.10)
 
     score = (t_w * t_score) + (tr_w * tr_damp) + (ml_w * ml_damp)
+
+    # ─── Physics-Informed bonus (Faz 1.5) ───────────────────────────────────
+    physics_bonus, physics_reasons = _apply_physics_rules(
+        machine_id, sensor_values or {}, machine_limits or {}, state
+    )
+    score += physics_bonus
+    reasons.extend(physics_reasons)
+
     score = min(round(score, 1), 100.0)
 
     # ─── Severity ────────────────────────────────────────────────────────────

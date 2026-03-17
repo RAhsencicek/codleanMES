@@ -1,0 +1,33 @@
+{
+  "version": "1.0",
+  "description": "Faz 1.5 - Physics-Informed Causal Rules (Neo4j yerine Hafif Siklet Bağlam Haritası)",
+  "rules": {
+    "thermal_stress": {
+      "condition": {
+        "oil_tank_temperature": "> 40",
+        "main_pressure": "> 100"
+      },
+      "risk_multiplier": 20.0,
+      "explanation_tr": "Yüksek sıcaklık ve aşırı ana basınç kombinasyonu termal stres yaratıyor.",
+      "action_tr": "Soğutma sistemini kontrol edin, eşanjör tıkanmış olabilir. Makineyi rölantiye alın."
+    },
+    "hydraulic_strain": {
+      "condition": {
+        "main_pressure_ratio": "> 0.8",
+        "horizontal_infeed_speed": "< 0.2",
+        "vertical_infeed_speed": "< 0.2"
+      },
+      "risk_multiplier": 30.0,
+      "explanation_tr": "Ana basınç tavan yapmasına rağmen hareket sensörleri tepki vermiyor (Hidrolik Zorlanma).",
+      "action_tr": "Silindirlerde mekanik sıkışma veya valf bloğunda ciddi iç kaçak var. Operasyonu durdurun."
+    },
+    "cold_startup_mask": {
+      "condition": {
+        "operating_minutes": "< 60"
+      },
+      "risk_multiplier": 0.5,
+      "explanation_tr": "Makine ısınma (startup) evresinde olduğu için dalgalanmalar tolere ediliyor.",
+      "action_tr": "Gözleme devam edin, şu anki sapmalar ısınma kaynaklı olabilir."
+    }
+  }
+}

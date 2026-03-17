@@ -489,8 +489,9 @@ def process(raw: dict):
             avg_c = sum(confs) / len(confs) if confs else 0.1
             event = scorer.calculate_risk(
                 mid, t_signals, r_signals, avg_c,
-                sensor_values={k: f"{v:.2f}" for k, v in pkt["numeric"].items()},
-                state=state.get(mid, {}),   # ML Predictor için ring buffer + EWMA
+                sensor_values={k: v for k, v in pkt["numeric"].items()},
+                state=state,
+                machine_limits=LIMITS.get(mid, {}),
             )
             if event:
                 md["risk_score"] = event.risk_score
@@ -587,20 +588,20 @@ def refresh_dashboard():
     all_hpr = sorted(HPR_MACHINES)
     
     # DEBUG
-   add_log(f"Config'de {len(all_hpr)} makine: {', '.join(all_hpr[:3])}...", "dim")
+    add_log(f"Config'de {len(all_hpr)} makine: {', '.join(all_hpr[:3])}...", "dim")
     
-   for mid in all_hpr:
-       ms = state.get(mid, {})
+    for mid in all_hpr:
+        ms = state.get(mid, {})
         md = machine_data[mid]
         
         # State'den EWMA ortalama değerlerini oku
         if ms.get("ewma_mean"):
             # Numeric sensörler - EWMA ortalama (SMOOTHING zaten limits_config.yaml'da)
-           for sensor, ewma_val in ms.get("ewma_mean", {}).items():
+            for sensor, ewma_val in ms.get("ewma_mean", {}).items():
                 md["sensors"][sensor] = round(ewma_val, 1)
             
             # Boolean sensörler - Kaç dakikadır aktif?
-           for sensor, bad_min in ms.get("bool_active_since", {}).items():
+            for sensor, bad_min in ms.get("bool_active_since", {}).items():
                 if isinstance(bad_min, (int, float)) and bad_min > 0:
                     md["booleans"][sensor] = bad_min
             

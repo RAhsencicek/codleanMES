@@ -25,9 +25,9 @@ print("\n┌─ SENARYO 1: NORMAL OPERASYON (Alert beklenmiyor)")
 print("─"*55)
 
 sensor_values_normal = {
-    "oil_tank_temperature": 38.5,      # max: 45 → NORMAL
-    "main_pressure": 95.2,             # max: 110 → NORMAL
-    "horizontal_press_pressure": 105.3, # max: 120 → NORMAL
+    "oil_tank_temperature": 35.0,      # max: 45 → NORMAL
+    "main_pressure": 90.0,             # max: 110 → NORMAL
+    "horizontal_press_pressure": 100.0, # max: 120 → NORMAL
     "lower_ejector_pressure": 88.7,    # max: 110 → NORMAL
     "horitzonal_infeed_speed": 150.0,  # max: 300 → NORMAL
     "vertical_infeed_speed": 120.0,    # max: 300 → NORMAL
