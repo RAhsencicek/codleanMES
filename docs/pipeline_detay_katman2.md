@@ -1,8 +1,8 @@
 # 🏭 Katman 2 ve Katman 2.5 — Karar Motoru & AI Usta Başı
 
-> **Son güncelleme:** 2026-03-13  
-> **Durum:** ✅ Güncel  
-> **Sorumlu Modül:** `src/analysis/risk_scorer.py`, `pipeline/ml_predictor.py`, `src/analysis/nlg_engine.py`
+> **Son güncelleme:** 2026-03-17  
+> **Durum:** ✅ Güncel (Faz 1.5 Tamamlandı)  
+> **Sorumlu Modül:** `src/analysis/risk_scorer.py`, `pipeline/ml_predictor.py`, `src/analysis/nlg_engine.py`, `src/analysis/dlime_explainer.py`
 
 ---
 

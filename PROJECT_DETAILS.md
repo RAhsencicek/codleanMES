@@ -1,9 +1,36 @@
 # Codlean MES — Production-Ready Fault Prediction Pipeline (Hybrid System)
 
-> **Son güncelleme:** 2026-03-06  
-> **Durum:** ✅ Model eğitildi + ✅ Hybrid system tasarlandı | 🚀 Production-ready  
+> **Son güncelleme:** 2026-03-17  
+> **Durum:** ✅ Faz 1.5 Tamamlandı | 🚀 Production-ready | 📊 Veri Toplama Aktif  
 > **Author:** R. Ahsen Çiçek  
-> **Strateji:** Rule-Based (kesin) + ML Pre-Fault (olası) + Cost-Aware Threshold
+> **Strateji:** Rule-Based (kesin) + ML Pre-Fault (olası) + Physics-Informed Context
+
+---
+
+## 📋 CURRENT STATE (Güncel Durum)
+
+| Bileşen | Durum | Son Güncelleme |
+|---------|-------|----------------|
+| **Faz 1.5 (Physics-Informed)** | ✅ Tamamlandı | 2026-03-17 |
+| **DLIME Fallback** | ✅ Entegre | 2026-03-17 |
+| **NLG Motor** | ✅ Canlı | 2026-03-17 |
+| **Veri Toplama** | 🟢 Aktif (5+ saat) | 2026-03-17 |
+| **Sistem** | 🟢 Çalışıyor | 2026-03-17 |
+
+**Toplanan Veri:**
+- `violation_log.json`: 2,122 kayıt (27 Şub - 5 Mart)
+- `historical_violations_mart_2026.json`: 18,132 kayıt (16 Mart)
+- `live_windows.json`: Canlı toplanıyor (17 Mart+)
+
+---
+
+## 🎯 NEXT STEPS (Sıradaki Adımlar)
+
+1. **Veri Toplama:** Sistem 24-48 saat daha çalışacak
+2. **Model Eğitimi:** Yeni verilerle ML modeli güncellenecek
+3. **Faz 2:** Gerçek zamanlı tahmin optimizasyonu
+
+---
 
 ---
 
@@ -2022,5 +2049,5 @@ Mevcut arayüz, sahadaki teknisyenin saniyeler içinde karar verebilmesi için *
 
 *Checkpoint 3.0 marks the successful transition of the project from a functional backend ML pipeline to a fully containerized, version-controlled, and visually stunning "Explainable AI" command center.*
 
-**Son güncelleme:** 2026-03-10 11:30 (Codebase mapped to `src/`, 3-Section UI complete)  
-**Bir sonraki milestone:** (Mevcut yapı üzerinden yeni ML modellerinin entegrasyonu veya Real-time Kafka Deployment)
+**Son güncelleme:** 2026-03-17 (Faz 1.5 tamamlandı, Physics-Informed Rules aktif, veri toplama devam ediyor)  
+**Bir sonraki milestone:** 2026-03-19 (Model eğitimi için yeterli veri toplama)
