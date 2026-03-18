@@ -32,6 +32,22 @@ Geleneksel OEE panelleri size sadece makinenin "bozulduğunu" veya "durduğunu" 
 | **Physics-Informed (Faz 1.5)** | ✅ Tamamlandı | Operating Minutes + Hydraulic Strain | 2026-03-17 |
 | **AI Usta Başı (Context)** | ✅ Tamamlandı | Causal JSON kuralları (Neo4j iptal) | 2026-03-17 |
 | **Data Collection** | ✅ Otomatize | `hpr_monitor.py` içinde entegre | 2026-03-17 |
+| **🆕 Rich Context Collector** | 🟢 **Aktif** | ±30dk zaman penceresi, sebep-sonuç analizi | 2026-03-18 |
+
+### 🎯 Aktif Veri Kampanyası: 30-Gün Plan (18 Mart - 17 Nisan 2026)
+
+**Hedef:** Gerçek bağlam-aware AI için yeterli ve kaliteli veri toplamak.
+
+| Aşama | Tarih | Hedef | Durum |
+|-------|-------|-------|-------|
+| **Veri Toplama** | 18 Mart - 17 Nisan | ~1,500 valid FAULT context | 🟢 Devam ediyor |
+| **Veri Temizliği** | 17-22 Nisan | Feature engineering | ⏳ Beklemede |
+| **Model Eğitimi** | 22-27 Nisan | TreeSHAP + DLIME + NLG | ⏳ Beklemede |
+| **Production** | 27 Nisan+ | Gerçek zamanlı AI | ⏳ Beklemede |
+
+**Yeni Modül:** [`scripts/data_tools/context_collector.py`](scripts/data_tools/context_collector.py) - Her FAULT'ta ±30dk zengin bağlam toplar.
+
+**Çıktı:** `rich_context_windows.json` - Pre-fault trend, korelasyonlar, cold start etiketleri.
 
 ---
 

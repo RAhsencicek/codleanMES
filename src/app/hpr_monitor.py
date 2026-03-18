@@ -19,6 +19,7 @@ from src.analysis import trend_detector    as trend
 from src.analysis import risk_scorer       as scorer
 from src.alerts import alert_engine      as alerter
 from scripts.data_tools import window_collector  as collector
+from scripts.data_tools import context_collector as rich_collector
 
 # ─── Rich import ─────────────────────────────────────────────────────────────
 try:
@@ -524,11 +525,17 @@ def process(raw: dict):
             if md["risk_score"] == 0:
                 md["severity"] = ""
 
-        # ── Window Collector ─────────────────────────────────────────
-        # Her mesajdaki numeric sensör değerlerini kaydeder.
-        # Fault varsa fault_windows'a, yoksa saatlik NORMAL kotasina.
+        # ── Window Collectors ─────────────────────────────────────────
+        # 1. Basit window collector (geriye uyumluluk için)
+        # 2. Rich context collector (zengin bağlam için ±30dk pencere)
         if pkt["numeric"]:
             collector.record(mid, pkt["numeric"])
+            
+            # Rich context: startup zamanını da gönder
+            startup_ts = None
+            if mid in state and "startup_ts" in state[mid]:
+                startup_ts = state[mid]["startup_ts"]
+            rich_collector.record(mid, pkt["numeric"], startup_ts)
 
 
 # ─── Ana döngü ───────────────────────────────────────────────────────────────
@@ -580,10 +587,12 @@ def main():
                 log.debug("İşleme hatası: %s", e)
 
     store.save_state(state)
-    collector.force_save()   # live_windows.json son kez yaz
+    collector.force_save()       # live_windows.json son kez yaz
+    rich_collector.force_save()  # rich_context_windows.json son kez yaz
     consumer.close()
     console.print("\n[green]✅ Sistem durduruldu. State + Windows kaydedildi.[/green]")
     console.print(f"[dim]{collector.summary()}[/dim]")
+    console.print(f"[dim]{rich_collector.summary()}[/dim]")
 
 
 if __name__ == "__main__":

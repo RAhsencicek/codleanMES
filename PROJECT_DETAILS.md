@@ -1,34 +1,89 @@
 # Codlean MES — Production-Ready Fault Prediction Pipeline (Hybrid System)
 
-> **Son güncelleme:** 2026-03-17  
-> **Durum:** ✅ Faz 1.5 Tamamlandı | 🚀 Production-ready | 📊 Veri Toplama Aktif  
+> **Son güncelleme:** 2026-03-18  
+> **Durum:** ✅ Faz 2 Başladı | 🧠 Zengin Context Toplama Aktif | 📊 30-Gün Veri Kampanyası  
 > **Author:** R. Ahsen Çiçek  
-> **Strateji:** Rule-Based (kesin) + ML Pre-Fault (olası) + Physics-Informed Context
+> **Strateji:** Rule-Based (kesin) + ML Pre-Fault (olası) + Physics-Informed Context + **Rich Context Windows**
 
 ---
 
-## 📋 CURRENT STATE (Güncel Durum)
+## 📋 CURRENT STATE (Güncel Durum - 18 Mart 2026)
 
-| Bileşen | Durum | Son Güncelleme |
-|---------|-------|----------------|
-| **Faz 1.5 (Physics-Informed)** | ✅ Tamamlandı | 2026-03-17 |
-| **DLIME Fallback** | ✅ Entegre | 2026-03-17 |
-| **NLG Motor** | ✅ Canlı | 2026-03-17 |
-| **Veri Toplama** | 🟢 Aktif (5+ saat) | 2026-03-17 |
-| **Sistem** | 🟢 Çalışıyor | 2026-03-17 |
+| Bileşen | Durum | Son Güncelleme | Açıklama |
+|---------|-------|----------------|----------|
+| **Faz 1.5 (Physics-Informed)** | ✅ Tamamlandı | 2026-03-17 | Operating Minutes, Hydraulic Strain, Cold Startup |
+| **Faz 2 (Rich Context)** | 🟢 **Aktif** | 2026-03-18 | ±30dk zaman penceresi, sebep-sonuç analizi |
+| **DLIME Fallback** | ✅ Entegre | 2026-03-17 | Deterministic LIME ile XAI |
+| **NLG Motor** | ✅ Canlı | 2026-03-17 | Türkçe doğal dil açıklamaları |
+| **Context Collector** | 🟢 **Yeni** | 2026-03-18 | `context_collector.py` devrede |
+| **Veri Toplama** | 🟢 Aktif (7+ saat) | 2026-03-18 | Kafka bağlantısı stabil |
+| **Sistem** | 🟢 Çalışıyor | 2026-03-18 | PID: 64219 |
 
-**Toplanan Veri:**
-- `violation_log.json`: 2,122 kayıt (27 Şub - 5 Mart)
-- `historical_violations_mart_2026.json`: 18,132 kayıt (16 Mart)
-- `live_windows.json`: Canlı toplanıyor (17 Mart+)
+### 🆕 YENİ: Zengin Context Toplama Sistemi (18 Mart 2026)
+
+**Yeni Modül:** `scripts/data_tools/context_collector.py`
+
+| Özellik | Değer | Amaç |
+|---------|-------|------|
+| **Pre-fault pencere** | 30 dk | Trend başlangıcını yakalama |
+| **Fault anı** | Anlık | Limit aşımı tespiti |
+| **Post-fault pencere** | 10 dk | Stabilizasyon analizi |
+| **Cold start filtresi** | 60 dk | Sahte FAULT eliminasyonu |
+| **Korelasyon analizi** | Çoklu sensör | Neden-sonuç ilişkisi |
+| **Operating minutes** | Entegre | Makine yaşını hesaplama |
+
+**Çıktı Dosyası:** `rich_context_windows.json`
+- Her FAULT için zengin bağlam penceresi
+- Pre/post-fault trend verileri
+- Sensör korelasyon matrisleri
+- Cold start etiketlemesi
 
 ---
 
-## 🎯 NEXT STEPS (Sıradaki Adımlar)
+## 🎯 30-GÜN VERİ KAMPANYASI (Mart-Nisan 2026)
 
-1. **Veri Toplama:** Sistem 24-48 saat daha çalışacak
-2. **Model Eğitimi:** Yeni verilerle ML modeli güncellenecek
-3. **Faz 2:** Gerçek zamanlı tahmin optimizasyonu
+### Hedef
+Gerçek bağlam-aware AI için **yeterli ve kaliteli veri** toplamak.
+
+### Zaman Çizelgesi
+
+| Dönem | Tarih | Hedef | Çıktı |
+|-------|-------|-------|-------|
+| **Gün 1-30** | 18 Mart - 17 Nisan | Zengin context toplama | ~1,500 valid FAULT context |
+| **Gün 30-35** | 17-22 Nisan | Veri temizliği & feature engineering | Temizlenmiş veri seti |
+| **Gün 35-40** | 22-27 Nisan | Model eğitimi & validasyon | TreeSHAP + DLIME + NLG entegre model |
+| **Gün 40+** | 27 Nisan+ | Production deployment | Gerçek zamanlı açıklanabilir AI |
+
+### Beklenen Veri Seti (30 gün sonunda)
+
+```
+Toplam Hedef: 11,500+ örnek
+├── Valid FAULT:    1,500+ (zengin context ile)
+├── Cold Start:     ~300 (filtrelenmiş)
+└── NORMAL:         10,000+ (dengeli sampling)
+```
+
+### Etiketleme Stratejisi (Teknisyensiz)
+
+| Durum | Kural | Etiket |
+|-------|-------|--------|
+| Limit aşımı + Cold start değil | `is_valid_fault = true` | ✅ GERÇEK FAULT |
+| Limit aşımı + Cold start (<60dk) | `is_valid_fault = false` | 🚫 IGNORE |
+| Normal çalışma | - | ⚪ NORMAL |
+
+---
+
+## 📊 MEVCUT VERİ ENVANTERİ (18 Mart 2026)
+
+| Kaynak | Boyut | Dönem | Kalite |
+|--------|-------|-------|--------|
+| `violation_log.json` | 346 KB | 3-5 Mart | 🟡 Sadece anlık değerler |
+| `historical_violations_mart_2026.json` | 2.9 MB | 16 Mart | 🟡 Metadata only |
+| `live_windows.json` | 21 KB | 18 Mart+ | 🟡 Basit pencere |
+| `rich_context_windows.json` | - | 18 Mart+ | 🟢 **Zengin context** (yeni) |
+| `incident_*.json` (41 adet) | - | Şubat-Mart | 🟡 Etiketsiz |
+
+**Not:** Eski veriler bağlam analizi için yetersiz. **30 gün yeni veri toplama** kritik önemde.
 
 ---
 

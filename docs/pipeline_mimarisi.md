@@ -2,8 +2,8 @@
 
 > **Amaç:** Bu doküman, projeyi bilen ya da bilmeyen herkesin pipeline'ı başından sonuna ana hatlarıyla kavrayabilmesi için yazılmıştır. Detaylı teknik süreçler alt dokümanlara bölünmüştür.
 
-**Son güncelleme:** 2026-03-13
-**Durum:** ✅ Hibrit AI ve Açıklanabilir AI (TreeSHAP) entegre edildi.
+> **Son güncelleme:** 2026-03-18
+> **Durum:** ✅ Faz 2 Aktif — Rich Context Collector devrede | 🎯 30-Gün Veri Kampanyası başladı
 
 ---
 
@@ -55,7 +55,7 @@ Pipeline, Kafka'dan ham veriyi okuyup teknisyene anlamlı bir uyarı üretene ka
 
 ---
 
-## 🛠️ Modüller ve Sorumluluklar (GÜNCEL YAPI)
+## 🛠️ Modüller ve Sorumluluklar (GÜNCEL YAPI - 18 Mart 2026)
 
 | Modül | Sorumluluk | Girdi | Çıktı |
 |-------|-----------|-------|-------|
@@ -69,6 +69,32 @@ Pipeline, Kafka'dan ham veriyi okuyup teknisyene anlamlı bir uyarı üretene ka
 | `src/analysis/nlg_engine.py`| SHAP'tan Doğal Dile Açıklama Üretimi | SHAP Values | Natural Language |
 | `src/alerts/alert_engine.py` | Throttle, XAI çeviri, DB kaydı, terminal | RiskEvent + ML | Ekran çıktısı |
 | `config/limits_config.yaml` | Min/max değerleri, tüm parametreler | — | Config dict |
+| **`scripts/data_tools/context_collector.py`** | **🆕 Zengin Context Toplama** | **Sensör değerleri + startup_ts** | **`rich_context_windows.json`** |
+
+### 🆕 Yeni Modül: Context Collector (Faz 2)
+
+**Konum:** [`scripts/data_tools/context_collector.py`](../scripts/data_tools/context_collector.py)
+
+**Amaç:** Gerçek bağlam-aware AI için **zengin zaman penceresi** toplamak.
+
+**Özellikler:**
+- **±30dk zaman penceresi:** Pre-fault (30dk) + Fault anı + Post-fault (10dk)
+- **Cold start filtresi:** Operating minutes < 60 dk olanları ignore et
+- **Korelasyon analizi:** Sensörler arası ilişkileri hesapla
+- **Otomatik etiketleme:** Limit aşımı + cold start değil = VALID FAULT
+
+**Entegrasyon:**
+```python
+# src/app/hpr_monitor.py içinde
+from scripts.data_tools import context_collector as rich_collector
+
+# Her mesajda çağrılır
+rich_collector.record(machine_id, sensor_values, startup_ts)
+```
+
+**Çıktı:** `rich_context_windows.json` — ML eğitimi için zengin bağlam verisi.
+
+**Strateji:** Detaylar için [`docs/data_collection_strategy.md`](data_collection_strategy.md)
 
 ---
 
