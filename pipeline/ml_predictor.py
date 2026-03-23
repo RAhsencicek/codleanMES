@@ -119,7 +119,7 @@ class MLPredictor:
             from src.analysis.dlime_explainer import DLIMEExplainer
             
             self._shap_explainer = shap.TreeExplainer(self._model)
-            self._dlime_explainer = DLIMEExplainer(self._model, os.path.join(_DIR, "..", "data", "ml_training_data.csv"))
+            self._dlime_explainer = DLIMEExplainer(self._model, os.path.join(_DIR, "model", "ml_training_data.csv"))
             self._nlg_engine = CodleanNLGEngine()
             log.info("✅ XAI (SHAP/DLIME) ve NLG Motoru başarıyla yüklendi.")
         except Exception as e:
@@ -218,23 +218,17 @@ class MLPredictor:
                 active_sensors += 1
                 total_faults   += n_faults
 
-            # EĞİTİMLE UYUM: Eğitimde value_mean/std/max sadece FAULT
-            # olan pencerelerde dolu, NORMAL pencerelerde 0.
-            # Canlıda da yalnızca fault varsa istatistik ver.
+            # Tüm recent değerler üzerinden istatistik hesapla (fault olmasa bile).
+            # Bu, train_model.py'deki window feature hesaplamasıyla tutarlı.
             arr = np.array(recent, dtype=float)
-            fault_arr = np.array(faults, dtype=float)
 
             feat[f"{sensor}__fault_count"] = n_faults
-            if n_faults > 0:
-                feat[f"{sensor}__value_mean"]  = float(fault_arr.mean())
-                feat[f"{sensor}__value_std"]   = float(fault_arr.std()) if n_faults > 1 else 0.0
-                feat[f"{sensor}__value_max"]   = float(fault_arr.max())
-                feat[f"{sensor}__over_ratio"]  = float(fault_arr.mean() / lim_max) if lim_max > 0 else 0.0
-            else:
-                feat[f"{sensor}__value_mean"]  = 0.0
-                feat[f"{sensor}__value_std"]   = 0.0
-                feat[f"{sensor}__value_max"]   = 0.0
-                feat[f"{sensor}__over_ratio"]  = 0.0
+            # Eğitimle uyum: value_mean/std/max tüm pencere üzerinden hesaplanır,
+            # sadece fault değerlerine değil. Bu train_model.py ile tutarlı.
+            feat[f"{sensor}__value_mean"]  = float(arr.mean()) if len(arr) > 0 else 0.0
+            feat[f"{sensor}__value_std"]   = float(arr.std())  if len(arr) > 1 else 0.0
+            feat[f"{sensor}__value_max"]   = float(arr.max())  if len(arr) > 0 else 0.0
+            feat[f"{sensor}__over_ratio"]  = float(arr.mean() / lim_max) if lim_max > 0 else 0.0
 
         feat["active_sensors"]       = active_sensors
         feat["multi_sensor_fault"]   = 1 if active_sensors >= 2 else 0

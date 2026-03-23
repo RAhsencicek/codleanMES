@@ -462,18 +462,19 @@ def train_and_evaluate(feat_df: pd.DataFrame) -> dict:
     # ADIM 2: 5-FOLD CROSS-VALIDATION (Stability Check)
     # ═══════════════════════════════════════════════════════════════════
     log.info("\n" + "═"*60)
-    log.info("🔄 ADIM 2: 5-FOLD CROSS-VALIDATION (Stratified)")
+    log.info("🔄 ADIM 2: 5-FOLD CROSS-VALIDATION (TimeSeriesSplit)")
     log.info("═"*60)
     
-    from sklearn.model_selection import StratifiedKFold
+    from sklearn.model_selection import TimeSeriesSplit
     
-    # Stratified K-Fold: Her fold'da class distribution aynı
-    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    # TimeSeriesSplit: Zaman sırasını bozmaz, gelecek veri geçmişi tahmin etmez.
+    # StratifiedKFold burada yanlış — zaman serisi verisini rastgele karıştırır.
+    tscv = TimeSeriesSplit(n_splits=5)
     cv_scores_f1 = []
     cv_scores_auc = []
     
-    log.info("\n   Fold skorları (stratified):")
-    for fold, (train_idx, val_idx) in enumerate(skf.split(X_train, y_train)):
+    log.info("\n   Fold skorları (time-series, leak-free):")
+    for fold, (train_idx, val_idx) in enumerate(tscv.split(X_train)):
         X_tr_fold, X_val_fold = X_train[train_idx], X_train[val_idx]
         y_tr_fold, y_val_fold = y_train[train_idx], y_train[val_idx]
         
@@ -582,17 +583,6 @@ def train_and_evaluate(feat_df: pd.DataFrame) -> dict:
         log.info("   ⚠️  Balanced threshold bulunamadı, F1-optimal kullanılıyor: %.2f", best_threshold)
         final_threshold = best_threshold
     
-    # ═══════════════════════════════════════════════════════════════════
-    # TEST İÇİN THRESHOLD OVERRIDE (Production'da config'den okunacak)
-    # ═══════════════════════════════════════════════════════════════════
-    # Recall artışı için threshold düşürülüyor (trade-off: precision azalır)
-    RECALL_FOCUSED_THRESHOLD = 0.25  # Deneme threshold'u
-    if RECALL_FOCUSED_THRESHOLD != final_threshold:
-        log.info("\n   🧪 TEST İÇİN: Threshold %.2f → %.2f (recall odaklı)",
-                 final_threshold, RECALL_FOCUSED_THRESHOLD)
-        final_threshold = RECALL_FOCUSED_THRESHOLD
-        log.info("   ⚠️  Beklenen: Precision ↓, Recall ↑↑, F1 →")
-
     # ═══════════════════════════════════════════════════════════════════
     # ADIM 4: COST ANALYSIS
     # ═══════════════════════════════════════════════════════════════════
@@ -986,18 +976,13 @@ def save_model(result: dict, feat_df: pd.DataFrame, out_dir: str = MODEL_DIR):
     log.info("   • %s/model.pkl", out_dir)
     log.info("   • %s/feature_names.json", out_dir)
     log.info("   • %s/model_report.json", out_dir)
-    
-    return model_path, report_path
 
-    # ml_training_data.csv (incelemek için)
-    csv_path = "ml_training_data.csv"
+    # ml_training_data.csv — DLIME explainer bu dosyayı kullanır
+    csv_path = os.path.join(out_dir, "ml_training_data.csv")
     feat_df.to_csv(csv_path, index=False)
+    log.info("   • %s", csv_path)
 
-    log.info("✅ model.pkl        → %s", model_path)
-    log.info("✅ feature_names    → %s", feat_path)
-    log.info("✅ model_report     → %s", report_path)
-    log.info("✅ ml_training_data → %s", csv_path)
-    return model_path, feat_path
+    return model_path, report_path
 
 # ═══════════════════════════════════════════════════════════════════════════
 # ANA AKIŞ

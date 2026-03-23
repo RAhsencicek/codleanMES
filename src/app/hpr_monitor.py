@@ -21,6 +21,14 @@ from src.alerts import alert_engine      as alerter
 from scripts.data_tools import window_collector  as collector
 from scripts.data_tools import context_collector as rich_collector
 
+# ─── ML Predictor (opsiyonel — model yoksa gracefully degrade) ───────────────
+try:
+    from pipeline.ml_predictor import predictor as _ml_predictor
+    _ML_AVAILABLE = True   # Import başarısı yeterli; is_active çalışma zamanında kontrol edilir
+except Exception as _e:
+    _ml_predictor = None
+    _ML_AVAILABLE = False
+
 # ─── Rich import ─────────────────────────────────────────────────────────────
 try:
     from rich.console import Console
@@ -42,14 +50,31 @@ log = logging.getLogger("hpr")
 console = Console()
 
 # ─── Config ──────────────────────────────────────────────────────────────────
-with open("limits_config.yaml") as f:
-    CONFIG = yaml.safe_load(f)
+import os as _os
+
+_ROOT = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+_CONFIG_PATH = _os.environ.get("CONFIG_PATH", _os.path.join(_ROOT, "config", "limits_config.yaml"))
+
+try:
+    with open(_CONFIG_PATH) as f:
+        CONFIG = yaml.safe_load(f)
+except FileNotFoundError:
+    console.print(f"[bold red]Hata: Konfig dosyası bulunamadı → {_CONFIG_PATH}[/bold red]")
+    console.print("[dim]CONFIG_PATH environment variable'ı ile yol belirtin.[/dim]")
+    sys.exit(1)
 
 LIMITS     = CONFIG.get("machine_limits", {})
 BOOL_RULES = CONFIG.get("boolean_rules", {})
 EWMA_ALPHA = CONFIG.get("ewma_alpha", {})
 PIPELINE   = CONFIG.get("pipeline", {})
 KAFKA_CFG  = CONFIG["kafka"]
+# Env var override — production ortamında YAML'ı değiştirmeye gerek yok
+if _os.environ.get("KAFKA_BOOTSTRAP_SERVERS"):
+    KAFKA_CFG["bootstrap_servers"] = _os.environ["KAFKA_BOOTSTRAP_SERVERS"]
+if _os.environ.get("KAFKA_TOPIC"):
+    KAFKA_CFG["topic"] = _os.environ["KAFKA_TOPIC"]
+if _os.environ.get("KAFKA_GROUP_ID"):
+    KAFKA_CFG["group_id"] = _os.environ["KAFKA_GROUP_ID"]
 
 # ─── UI Mode Settings ────────────────────────────────────────────────────────
 UI_MODE = "compact"  # "full", "compact", "minimal"
@@ -74,15 +99,17 @@ running       = True
 # Smooth transition için previous values (UI flicker önleme)
 previous_values = defaultdict(lambda: {"sensors": {}, "risk_score": 0, "severity": ""})
 machine_data  = defaultdict(lambda: {
-    "execution":    "—",
-    "sensors":      {},
-    "booleans":     {},
-    "risk_score":   0.0,
-    "severity":     "",
-    "confidence":   0.0,
-    "alert_count":  0,
-    "last_alerts":  [],   # Son 3 alert
-    "trend_info":   {},   # {sensor: slope_per_hour}
+    "execution":        "—",
+    "sensors":          {},
+    "booleans":         {},
+    "risk_score":       0.0,
+    "severity":         "",
+    "confidence":       0.0,
+    "alert_count":      0,
+    "last_alerts":      [],    # Son 3 alert
+    "trend_info":       {},    # {sensor: slope_per_hour}
+    "last_signal_ts":   None,  # Zamana dayalı decay için
+    "last_alert_source": "",   # "KURAL" | "ML" — dashboard kaynak ayrımı
 })
 
 # Tüm HPR makinelerini başlat
@@ -499,17 +526,21 @@ def process(raw: dict):
                 md["booleans"].pop(sensor, None)
 
         if t_signals or r_signals:
+            # ── KURAL TABANLI YOL: Threshold + Trend + Physics + ML Ensemble ──
             confs = [store.get_confidence(state, mid, s) for s in list(pkt["numeric"])[:5]]
             avg_c = sum(confs) / len(confs) if confs else 0.1
             event = scorer.calculate_risk(
                 mid, t_signals, r_signals, avg_c,
                 sensor_values={k: f"{v:.2f}" for k, v in pkt["numeric"].items()},
-                state=state.get(mid, {}),   # ML Predictor için ring buffer + EWMA
+                state=state.get(mid, {}),
+                machine_limits=LIMITS.get(mid, {}),
             )
             if event:
-                md["risk_score"] = event.risk_score
-                md["severity"]   = event.severity
-                md["confidence"] = event.confidence
+                md["risk_score"]        = event.risk_score
+                md["severity"]          = event.severity
+                md["confidence"]        = event.confidence
+                md["last_signal_ts"]    = datetime.now()
+                md["last_alert_source"] = "KURAL"
 
                 if alerter.process_alert(event, min_score=20):
                     stats["alerts"] += 1
@@ -517,13 +548,50 @@ def process(raw: dict):
                     icon = "🚨" if event.severity == "KRİTİK" else "⚠️"
                     sev_style = {"KRİTİK": "bold red", "YÜKSEK": "red", "ORTA": "yellow"}.get(event.severity, "white")
                     add_log(
-                        f"{icon} {mid} | {event.severity} | skor={event.risk_score:.0f} | {event.reasons[0][:55]}",
+                        f"{icon} [KURAL] {mid} | {event.severity} | skor={event.risk_score:.0f} | {event.reasons[0][:50]}",
                         style=sev_style
                     )
         else:
-            md["risk_score"] = max(md["risk_score"] - 1, 0.0)
-            if md["risk_score"] == 0:
-                md["severity"] = ""
+            # ── Zamana dayalı decay ──────────────────────────────────────────
+            if md["last_signal_ts"] is not None and md["risk_score"] > 0:
+                elapsed_sec = (datetime.now() - md["last_signal_ts"]).total_seconds()
+                decay = min(elapsed_sec / 10.0, md["risk_score"])
+                md["risk_score"] = max(md["risk_score"] - decay, 0.0)
+                if md["risk_score"] == 0:
+                    md["last_signal_ts"]    = None
+                    md["last_alert_source"] = ""
+                    md["severity"]          = ""
+                else:
+                    md["last_signal_ts"] = datetime.now()
+
+            # ── ML PRE-FAULT YOLU: Kural sinyali yokken ML erken uyarı ──────
+            # Sadece is_stale ve is_startup dışında çalışır.
+            # Throttle: alerter._last_alert paylaşımlı → sonsuz alert riski yok.
+            # Fallback: _ML_AVAILABLE=False ise bu blok sessizce atlanır.
+            if _ML_AVAILABLE and _ml_predictor.is_active and not pkt["is_stale"] and not pkt["is_startup"]:
+                hybrid_alerts = alerter.generate_hybrid_alert(
+                    mid,
+                    sensor_values=pkt["numeric"],
+                    window_features=state.get(mid, {}),
+                    limits_config=LIMITS,
+                    ml_predictor=_ml_predictor,
+                )
+                for ha in hybrid_alerts:
+                    if ha["type"] != "PRE_FAULT_WARNING":
+                        continue  # FAULT zaten yukarıda threshold_checker yakaladı
+                    if alerter.process_hybrid_alert(ha, use_rich=False):
+                        stats["alerts"] += 1
+                        md["alert_count"]       += 1
+                        md["risk_score"]         = min(ha.get("ml_score", 50.0), 100.0)
+                        md["severity"]           = ha.get("severity", "ORTA")
+                        md["confidence"]         = ha.get("confidence", 0.0)
+                        md["last_signal_ts"]     = datetime.now()
+                        md["last_alert_source"]  = "ML"
+                        add_log(
+                            f"🤖 [ML] {mid} | {ha['severity']} | "
+                            f"güven={ha['confidence']*100:.0f}% | {ha['reasons'][0][:50]}",
+                            style="cyan"
+                        )
 
         # ── Window Collectors ─────────────────────────────────────────
         # 1. Basit window collector (geriye uyumluluk için)
@@ -543,10 +611,11 @@ def main():
     global running
 
     consumer = Consumer({
-        "bootstrap.servers": KAFKA_CFG["bootstrap_servers"],
-        "group.id":         f"hpr-monitor-{datetime.now().strftime('%H%M%S')}",  # Unique group
-        "auto.offset.reset": "latest",
-        "enable.auto.commit": False,
+        "bootstrap.servers":  KAFKA_CFG["bootstrap_servers"],
+        "group.id":           KAFKA_CFG.get("group_id", "hpr-monitor-prod"),
+        "auto.offset.reset":  "latest",
+        "enable.auto.commit": True,   # Static group.id ile offset Kafka'ya yazılır
+        "auto.commit.interval.ms": 5000,
         "session.timeout.ms": 10000,
         "fetch.wait.max.ms":  500,
     })

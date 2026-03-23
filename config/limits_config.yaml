@@ -6,6 +6,10 @@
 # =============================================================================
 
 kafka:
+  # Defaults — production'da environment variable ile override edin:
+  #   KAFKA_BOOTSTRAP_SERVERS=<ip:port>
+  #   KAFKA_TOPIC=<topic-name>
+  #   KAFKA_GROUP_ID=<group-id>
   bootstrap_servers: "10.71.120.10:7001"
   topic: "mqtt-topic-v2"
   group_id: "ariza-tahmin-pipeline"
