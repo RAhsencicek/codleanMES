@@ -24,11 +24,11 @@ Geleneksel OEE panelleri size sadece makinenin "bozulduğunu" veya "durduğunu" 
 
 | Bileşen | Durum | Açıklama | Son Güncelleme |
 |---------|-------|----------|----------------|
-| **Rule-Based Alert** | ✅ Canlı | Katı eşik sınırları aktif | 2026-03-13 |
-| **ML Pre-Fault** | ✅ Model eğitildi | XGBoost çalışıyor | 2026-03-06 |
-| **SHAP XAI** | ✅ Entegre | Lazy evaluation: Risk > %50'de çalışır (~100ms) | 2026-03-13 |
-| **NLG Motor** | ✅ Canlı | Türkçe açıklamalar üretiliyor | 2026-03-13 |
-| **DLIME Fallback** | ✅ Sigorta | XGBoost dışı modeller için backup | 2026-03-13 |
+| **Rule-Based Alert** | ✅ Canlı | Katı eşik sınırları aktif | 2026-03-18 |
+| **ML Pre-Fault** | 🔬 Beta | XGBoost — Test F1=0.48 (veri birikince yeniden eğitilecek) | 2026-03-06 |
+| **SHAP XAI** | ✅ Entegre | Lazy evaluation: Risk > %50'de çalışır (~100ms) | 2026-03-18 |
+| **NLG Motor** | ✅ Canlı | Türkçe açıklamalar üretiliyor | 2026-03-18 |
+| **DLIME Fallback** | ✅ Sigorta | XGBoost dışı modeller için backup | 2026-03-18 |
 | **Physics-Informed (Faz 1.5)** | ✅ Tamamlandı | Operating Minutes + Hydraulic Strain | 2026-03-17 |
 | **AI Usta Başı (Context)** | ✅ Tamamlandı | Causal JSON kuralları (Neo4j iptal) | 2026-03-17 |
 | **Data Collection** | ✅ Otomatize | `hpr_monitor.py` içinde entegre | 2026-03-17 |
@@ -104,6 +104,8 @@ Arayüzümüz, teknisyenin bilişsel yükünü (cognitive load) sıfıra indirme
 Göz alıcı arayüzü terminalinizde canlı olarak test etmek için:
 ```bash
 # Zaman Makinesi (Historical Replay) simülasyonunu başlatın:
+# Not: dashboard_pro.py bağımsız bir simülasyon aracıdır.
+# Gerçek zamanlı izleme için hpr_monitor.py'yi kullanın.
 PYTHONPATH=. python src/ui/dashboard_pro.py
 ```
 
