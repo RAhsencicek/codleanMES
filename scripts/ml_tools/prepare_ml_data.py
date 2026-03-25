@@ -7,7 +7,7 @@ def main():
     print("Veri hazırlama işlemi başladı...")
     
     try:
-        with open("violation_log.json", "r") as f:
+        with open("data/violation_log.json", "r") as f:
             data = json.load(f)
             
         print(f"[{time.time()-start_time:.1f}s] JSON dosyası okundu.")

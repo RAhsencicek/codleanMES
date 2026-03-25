@@ -60,6 +60,33 @@ _context_windows: Dict[str, List[dict]] = defaultdict(list)
 _started_at: str = datetime.now(timezone.utc).isoformat()
 _lock = threading.Lock()
 
+
+def _load_existing():
+    """Başlangıçta mevcut JSON dosyasını belleğe yükle."""
+    if not os.path.exists(OUTPUT_FILE):
+        return
+    try:
+        with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        machines = data.get("machines", {})
+        for mid, mdata in machines.items():
+            windows = mdata.get("context_windows", [])
+            if windows:
+                _context_windows[mid].extend(windows)
+        meta = data.get("meta", {})
+        global _started_at
+        if meta.get("started_at"):
+            _started_at = meta["started_at"]
+    except Exception:
+        pass
+
+
+_load_existing()
+
+# Periyodik otomatik kayıt (her 5 dakikada bir)
+_AUTO_SAVE_INTERVAL = 300  # saniye
+_last_auto_save: float = 0.0
+
 # Aktif FAULT takibi (post-fault verisi için)
 _active_faults: Dict[str, dict] = {}  # machine_id → fault_info
 
@@ -306,6 +333,15 @@ def record(machine_id: str, sensor_values: dict, startup_ts: Optional[str] = Non
                 
                 del _active_faults[machine_id]
 
+    # Periyodik otomatik kayıt (lock dışında zaman kontrolü, içinde kayıt)
+    import time
+    global _last_auto_save
+    now_ts = time.monotonic()
+    if now_ts - _last_auto_save >= _AUTO_SAVE_INTERVAL:
+        with _lock:
+            _save()
+            _last_auto_save = time.monotonic()
+
 
 def _save():
     """JSON dosyasına yaz."""
@@ -342,6 +378,7 @@ def _save():
     tmp = OUTPUT_FILE + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, default=str)
+        f.write("\n")
     os.replace(tmp, OUTPUT_FILE)
 
 

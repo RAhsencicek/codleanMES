@@ -1,0 +1,273 @@
+"machinecode","machinetypeid","machinetypecode","machinetypename","dataitemid","name","description","data_type","min_value","max_value","not_allowed_values","allowed_values","unit","true_label","false_label","center","success_key","is_violation_enabled"
+,1,"001",Testere,alarm_14,Alarm 14,Alarm 14 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,block,Block Status,Makinenin bloklu olup olmadığını ifade eder,boolean,,,,,,,,,,false
+,2,"002",AbbRobot,alarm_13,Alarm 13,Alarm 13 durumunu ifade eder,string,,,,,,,,,,false
+,2,"002",AbbRobot,part_count,Part Count,Üretilen toplam parça sayısını ifade eder,number,,,,,,,,,,false
+,1,"001",Testere,mode,Makine Çalışma Modu,Makinenin çalışma modunu ifade eder,number,,,,,,,,,,false
+,5,"005",Indüksiyon,additional_current,İlave Akım,Ek akım değerini ifade eder,number,,,,,A,,,,,false
+,1,"001",Testere,alarm_10,Alarm 10,Alarm 10 durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,alarm_14,Alarm 14,Alarm 14 durumunu ifade eder,string,,,,,,,,,,false
+,5,"005",Indüksiyon,alarm_17,Alarm 17,Alarm 17 durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,pressure_line_filter_5_dirty,Basınç Hattı Filtre 5 Kirlilik,Basınç hattı filtre 5 kirlilik durumunu ifade eder,boolean,,,,,,,,,,false
+,2,"002",AbbRobot,status,Machine Status,Makinenin genel çalışma durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,alarm_13,Alarm 13,Alarm 13 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,x_servo_condition,X Servo Durumu,X Servo Durumu,string,,,,,,,,,,false
+,4,"004",Yatay Pres,alarm_18,Alarm 18,Alarm 18 durumunu ifade eder,string,,,,,,,,,,false
+,5,"005",Indüksiyon,power,Güç,,number,,,,,kW,,,,,false
+,7,"007",Fanuc CNC,spindle_load,Spindle Load,Spindle üzerindeki yük oranını ifade eder,number,,,,,,,,,,false
+,5,"005",Indüksiyon,alarm_10,Alarm 10,Alarm 10 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,spindle_overheat_condition,Spindle Overheat,Spindle Overheat,string,,,,,,,,,,false
+,1,"001",Testere,alarm_4,Alarm 4,Alarm 4 durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,pump_2_suction_valve_ok,Pompa 2 Emiş Valfi Durumu,Pompa 2 emiş valfinin sağlamlık durumunu ifade eder,boolean,,,,,,,,,,false
+,5,"005",Indüksiyon,alarm_22,Alarm 22,Alarm 22 durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,oil_tank_level_low,Yağ Tankı Seviyesi,Yağ tankı seviyesinin düşük olup olmadığını ifade eder,boolean,,,,,,,,,,false
+,4,"004",Yatay Pres,cooling_tower_active,Soğutma Kuleleri,Soğutma kulesinin aktif durumunu ifade eder,boolean,,,,,,,,,,false
+,4,"004",Yatay Pres,pressure_line_filter_4_dirty,Basınç Hattı Filtre 4 Kirlilik,Basınç hattı filtre 4 kirlilik durumunu ifade eder,boolean,,,,,,,,,,false
+,2,"002",AbbRobot,alarm_14,Alarm 14,Alarm 14 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,spindle_speed,Spindle Speed,Spindle devir hızını ifade eder,number,,,,,,,,,,false
+,3,"003",Dikey Pres,alarm_2,Alarm 2,Alarm 2 durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,status,Machine Status,Makinenin genel çalışma durumunu ifade eder,string,,,,,,,,,,false
+,2,"002",AbbRobot,alarm_15,Alarm 15,Alarm 15 durumunu ifade eder,string,,,,,,,,,,false
+,2,"002",AbbRobot,alarm_6,Alarm 6,Alarm 6 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,tool_id,Tool ID,Kullanılan takımın kimliğini ifade eder,number,,,,,,,,,,false
+,1,"001",Testere,cut_count,Kesilecek Adet,Kesim adedini ifade eder,number,,,,,,,,,,false
+,5,"005",Indüksiyon,alarm_21,Alarm 21,Alarm 21 durumunu ifade eder,string,,,,,,,,,,false
+,5,"005",Indüksiyon,part_count,Part Count,Üretilen toplam parça sayısını ifade eder,number,,,,,,,,,,false
+,7,"007",Fanuc CNC,alarm_16,Alarm 16,Alarm 16 durumunu ifade eder,string,,,,,,,,,,false
+,2,"002",AbbRobot,fixture_2_data,Fixture 2 Data,Fikstür 2 verilerini ifade eder,string,,,,,,,,,,false
+,3,"003",Dikey Pres,alarm_17,Alarm 17,Alarm 17 durumunu ifade eder,string,,,,,,,,,,false
+,5,"005",Indüksiyon,execution,Execution Status,Makinenin çalışıp çalışmadığını ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,stripper_up_down,Stripper Status,Sıyırıcı mekanizmasının yukarı veya aşağı konumunu ifade eder,string,,,,,,,,,,false
+,3,"003",Dikey Pres,alarm_5,Alarm 5,Alarm 5 durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,pressure_line_filter_2_dirty,Basınç Hattı Filtre 2 Kirlilik,Basınç hattı filtre 2 kirlilik durumunu ifade eder,boolean,,,,,,,,,,false
+,7,"007",Fanuc CNC,axis_u_relative,U Relative Position,U Relative Position,number,,,,,,,,,,false
+,3,"003",Dikey Pres,alarm_6,Alarm 6,Alarm 6 durumunu ifade eder,string,,,,,,,,,,false
+,2,"002",AbbRobot,execution,Execution Status,Makinenin çalışıp çalışmadığını ifade eder,string,,,,,,,,,,false
+,1,"001",Testere,alarm_5,Alarm 5,Alarm 5 durumunu ifade eder,string,,,,,,,,,,false
+,3,"003",Dikey Pres,press_up_down,Press Position,Pres mekanizmasının yukarı veya aşağı konumunu ifade eder,number,,,,,,,,,,false
+,3,"003",Dikey Pres,pressure_line_filter_4_dirty,Basınç Hattı Filtre 4 Kirlilik,Basınç hattı filtre 4 kirlilik durumunu ifade eder,boolean,,,,,,Kirli,Temiz,,FALSE,true
+,4,"004",Yatay Pres,alarm_16,Alarm 16,Alarm 16 durumunu ifade eder,string,,,,,,,,,,false
+,1,"001",Testere,feed_speed,İlerleme Hızı,Besleme hızını ifade eder,number,,,,,mm/s,,,,,false
+,7,"007",Fanuc CNC,axis_z_distance,Z Distance To Go,Z Distance To Go,number,,,,,,,,,,false
+,7,"007",Fanuc CNC,alarm_21,Alarm 21,Alarm 21 durumunu ifade eder,string,,,,,,,,,,false
+,3,"003",Dikey Pres,stripper_up_down,Stripper Status,Sıyırıcı mekanizmasının yukarı veya aşağı konumunu ifade eder,string,,,,,,,,,,false
+,5,"005",Indüksiyon,alarm_18,Alarm 18,Alarm 18 durumunu ifade eder,string,,,,,,,,,,false
+,2,"002",AbbRobot,alarm_17,Alarm 17,Alarm 17 durumunu ifade eder,string,,,,,,,,,,false
+,5,"005",Indüksiyon,alarm_19,Alarm 19,Alarm 19 durumunu ifade eder,string,,,,,,,,,,false
+,9,"009",Press 500 Ton,status,Machine Status,Makinenin genel çalışma durumunu ifade eder,string,,,,,,,,,,false
+,3,"003",Dikey Pres,alarm_4,Alarm 4,Alarm 4 durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,pump_1_suction_valve_ok,Pompa 1 Emiş Valfi Durumu,Pompa 1 emiş valfinin sağlamlık durumunu ifade eder,boolean,,,,,,,,,,false
+,4,"004",Yatay Pres,pilot_pump_filter_1_dirty,Pilot Pompa Filtre 1 Kirlilik,Pilot pompa filtre 1 kirlilik durumunu ifade eder,boolean,,,,,,,,,,false
+,3,"003",Dikey Pres,lower_ejector_pressure,Alt Çıkarıcı Basıncı,Alt itici basınç değerini ifade eder,number,0.0000,110.0000,,,bar,,,,,true
+,7,"007",Fanuc CNC,alarm_9,Alarm 9,Alarm 9 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,spindle_mode,Spindle Mode,"",string,,,,,,,,,,false
+,5,"005",Indüksiyon,alarm_9,Alarm 9,Alarm 9 durumunu ifade eder,string,,,,,,,,,,false
+,2,"002",AbbRobot,alarm_22,Alarm 22,Alarm 22 durumunu ifade eder,string,,,,,,,,,,false
+,5,"005",Indüksiyon,alarm_3,Alarm 3,Alarm 3 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,alarm_22,Alarm 22,Alarm 22 durumunu ifade eder,string,,,,,,,,,,false
+,5,"005",Indüksiyon,alarm_11,Alarm 11,Alarm 11 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,alarm_20,Alarm 20,Alarm 20 durumunu ifade eder,string,,,,,,,,,,false
+,2,"002",AbbRobot,error_count,Error Count,Oluşan hata sayısını ifade eder,number,,,,,,,,,,false
+,5,"005",Indüksiyon,status,Machine Status,Makinenin genel çalışma durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,return_line_filter_2_dirty,Geri Dönüş Hattı Filtre 2 Kirlilik,Geri dönüş hattı filtre 2 kirlilik durumunu ifade eder,boolean,,,,,,,,,,false
+,1,"001",Testere,part_count,Part Count,Üretilen toplam parça sayısını ifade eder,number,,,,,,,,,,false
+,4,"004",Yatay Pres,alarm_19,Alarm 19,Alarm 19 durumunu ifade eder,string,,,,,,,,,,false
+,3,"003",Dikey Pres,alarm_9,Alarm 9,Alarm 9 durumunu ifade eder,string,,,,,,,,,,false
+,2,"002",AbbRobot,alarm_5,Alarm 5,Alarm 5 durumunu ifade eder,string,,,,,,,,,,false
+,2,"002",AbbRobot,alarm_7,Alarm 7,Alarm 7 durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,prefill_punch_active,Prefill Punch Active,Ön dolum zımbasının aktif durumunu ifade eder,boolean,,,,,,,,,,false
+,4,"004",Yatay Pres,part_count,Part Count,Üretilen toplam parça sayısını ifade eder,number,,,,,,,,,,false
+,4,"004",Yatay Pres,pump_5_suction_valve_ok,Pompa 5 Emiş Valfi Durumu,Pompa 5 emiş valfinin sağlamlık durumunu ifade eder,boolean,,,,,,,,,,false
+,7,"007",Fanuc CNC,alarm_19,Alarm 19,Alarm 19 durumunu ifade eder,string,,,,,,,,,,false
+,1,"001",Testere,alarm_17,Alarm 17,Alarm 17 durumunu ifade eder,string,,,,,,,,,,false
+,3,"003",Dikey Pres,mode,Makine Çalışma Modu,Makinenin çalışma modunu ifade eder,number,,,,,,,,,,false
+,5,"005",Indüksiyon,alarm_12,Alarm 12,Alarm 12 durumunu ifade eder,string,,,,,,,,,,false
+,8,"008",Döner Tabla,status,Machine Status,Makinenin genel çalışma durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,vertical_infeed_speed,Dikey Pres İşe Giriş Hızı,Dikey besleme hızını ifade eder,number,,,,,,,,,,false
+,3,"003",Dikey Pres,pump_4_suction_valve_ok,Pompa 4 Emiş Valfi Durumu,Pompa 4 emiş valfinin sağlamlık durumunu ifade eder,boolean,,,,,,OK,Arızalı,,TRUE,true
+,5,"005",Indüksiyon,alarm_20,Alarm 20,Alarm 20 durumunu ifade eder,string,,,,,,,,,,false
+,3,"003",Dikey Pres,return_line_filter_2_dirty,Geri Dönüş Hattı Filtre 2 Kirlilik,Geri dönüş hattı filtre 2 kirlilik durumunu ifade eder,boolean,,,,,,Kirli,Temiz,,FALSE,true
+,7,"007",Fanuc CNC,alarm_18,Alarm 18,Alarm 18 durumunu ifade eder,string,,,,,,,,,,false
+,3,"003",Dikey Pres,ejector_up_down,Ejector Position,İtici mekanizmasının yukarı veya aşağı konumunu ifade eder,boolean,,,,,,,,,,false
+,3,"003",Dikey Pres,pressure_line_filter_1_dirty,Basınç Hattı Filtre 1 Kirlilik,Basınç hattı filtre 1 kirlilik durumunu ifade eder,boolean,,,,,,Kirli,Temiz,,FALSE,true
+,4,"004",Yatay Pres,alarm_9,Alarm 9,Alarm 9 durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,pilot_pump_filter_2_dirty,Pilot Pompa Filtre 2 Kirlilik,Pilot pompa filtre 2 kirlilik durumunu ifade eder,boolean,,,,,,,,,,false
+,5,"005",Indüksiyon,alarm_6,Alarm 6,Alarm 6 durumunu ifade eder,string,,,,,,,,,,false
+,3,"003",Dikey Pres,prefill_punch_active,Prefill Punch Active,Ön dolum zımbasının aktif durumunu ifade eder,boolean,,,,,,,,,,false
+,5,"005",Indüksiyon,alarm_14,Alarm 14,Alarm 14 durumunu ifade eder,string,,,,,,,,,,false
+,3,"003",Dikey Pres,oil_tank_level_low,Yağ Tankı Seviyesi,Yağ tankı seviyesinin düşük olup olmadığını ifade eder,boolean,,,,,,Düşük,Normal,,FALSE,true
+,4,"004",Yatay Pres,horitzonal_infeed_speed,Yatay Pres İşe Giriş Hızı,Yatay besleme hızını ifade eder,number,-300.0000,300.0000,,,mm/sn,,,0.0000,,true
+,3,"003",Dikey Pres,alarm_15,Alarm 15,Alarm 15 durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,alarm_12,Alarm 12,Alarm 12 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,alarm_4,Alarm 4,Alarm 4 durumunu ifade eder,string,,,,,,,,,,false
+,1,"001",Testere,estop,Emergency Stop,Acil stop durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,program,Program,Makinede çalışan programı ifade eder,string,,,,,,,,,,false
+,2,"002",AbbRobot,alarm_21,Alarm 21,Alarm 21 durumunu ifade eder,string,,,,,,,,,,false
+,2,"002",AbbRobot,alarm_8,Alarm 8,Alarm 8 durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,alarm_15,Alarm 15,Alarm 15 durumunu ifade eder,string,,,,,,,,,,false
+,5,"005",Indüksiyon,alarm_4,Alarm 4,Alarm 4 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,axis_w_relative,W Relative Position,W Relative Position,number,,,,,,,,,,false
+,7,"007",Fanuc CNC,alarm_8,Alarm 8,Alarm 8 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,alarm_14,Alarm 14,Alarm 14 durumunu ifade eder,string,,,,,,,,,,false
+,1,"001",Testere,target_cut_count,Target Cut Count,Hedeflenen kesim adedini ifade eder,number,,,,,,,,,,false
+,4,"004",Yatay Pres,alarm_7,Alarm 7,Alarm 7 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,alarm_2,Alarm 2,Alarm 2 durumunu ifade eder,string,,,,,,,,,,false
+,3,"003",Dikey Pres,alarm_16,Alarm 16,Alarm 16 durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,pressure_line_filter_3_dirty,Basınç Hattı Filtre 3 Kirlilik,Basınç hattı filtre 3 kirlilik durumunu ifade eder,boolean,,,,,,,,,,false
+,3,"003",Dikey Pres,estop,Emergency Stop,Acil stop durumunu ifade eder,string,,,,,,,,,,false
+,2,"002",AbbRobot,alarm_1,Alarm 1,Alarm 1 durumunu ifade eder,string,,,,,,,,,,false
+,2,"002",AbbRobot,fixture_1_completed,Fixture 1 Completed,Fikstür 1 işleminin tamamlanma durumunu ifade eder,boolean,,,,,,,,,,false
+,4,"004",Yatay Pres,alarm_4,Alarm 4,Alarm 4 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,alarm_11,Alarm 11,Alarm 11 durumunu ifade eder,string,,,,,,,,,,false
+,1,"001",Testere,alarm_6,Alarm 6,Alarm 6 durumunu ifade eder,string,,,,,,,,,,false
+,2,"002",AbbRobot,alarm_4,Alarm 4,Alarm 4 durumunu ifade eder,string,,,,,,,,,,false
+,5,"005",Indüksiyon,alarm_16,Alarm 16,Alarm 16 durumunu ifade eder,string,,,,,,,,,,false
+,6,"006",Kumlama,status,Machine Status,Makinenin genel çalışma durumunu ifade eder,string,,,,,,,,,,false
+,2,"002",AbbRobot,alarm_19,Alarm 19,Alarm 19 durumunu ifade eder,string,,,,,,,,,,false
+,2,"002",AbbRobot,estop,Emergency Stop,Acil stop durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,lower_ejector_pressure,Alt Çıkarıcı Basıncı,Alt itici basınç değerini ifade eder,number,,,,,,,,,,false
+,4,"004",Yatay Pres,alarm_5,Alarm 5,Alarm 5 durumunu ifade eder,string,,,,,,,,,,false
+,1,"001",Testere,saw_speed,Testere Hızı,Testere hızını ifade eder,number,0.0000,90.0000,,,RPM,,,,,true
+,4,"004",Yatay Pres,alarm_21,Alarm 21,Alarm 21 durumunu ifade eder,string,,,,,,,,,,false
+,1,"001",Testere,alarm_19,Alarm 19,Alarm 19 durumunu ifade eder,string,,,,,,,,,,false
+,1,"001",Testere,alarm_16,Alarm 16,Alarm 16 durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,pump_3_suction_valve_ok,Pompa 3 Emiş Valfi Durumu,Pompa 3 emiş valfinin sağlamlık durumunu ifade eder,boolean,,,,,,,,,,false
+,3,"003",Dikey Pres,oil_tank_temperature,Yağ Tankı Sıcaklığı,Yağ tankının sıcaklık değerini ifade eder,number,0.0000,45.0000,,,°C,,,,,true
+,2,"002",AbbRobot,alarm_18,Alarm 18,Alarm 18 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,estop,Emergency Stop,Acil stop durumunu ifade eder,string,,,,,,,,,,false
+,1,"001",Testere,alarm_21,Alarm 21,Alarm 21 durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,alarm_1,Alarm 1,Alarm 1 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,axis_z_machine,Z Machine Position,Z Machine Position,number,,,,,,,,,,false
+,8,"008",Döner Tabla,execution,Execution Status,Makinenin çalışıp çalışmadığını ifade eder,string,,,,,,,,,,false
+,5,"005",Indüksiyon,alarm_13,Alarm 13,Alarm 13 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,mode,Makine Çalışma Modu,Makinenin çalışma modunu ifade eder,number,,,,,,,,,,false
+,2,"002",AbbRobot,fixture_2_completed,Fixture 2 Completed,Fikstür 2 işleminin tamamlanma durumunu ifade eder,boolean,,,,,,,,,,false
+,5,"005",Indüksiyon,estop,Emergency Stop,Acil stop durumunu ifade eder,string,,,,,,,,,,false
+,1,"001",Testere,alarm_3,Alarm 3,Alarm 3 durumunu ifade eder,string,,,,,,,,,,false
+,2,"002",AbbRobot,fixture_1_count,Fixture 1 Count,Fikstür 1 parça sayısını ifade eder,number,,,,,,,,,,false
+,1,"001",Testere,alarm_22,Alarm 22,Alarm 22 durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,press_up_down,Press Position,Pres mekanizmasının yukarı veya aşağı konumunu ifade eder,number,,,,,,,,,,false
+,5,"005",Indüksiyon,alarm_2,Alarm 2,Alarm 2 durumunu ifade eder,string,,,,,,,,,,false
+,1,"001",Testere,alarm_8,Alarm 8,Alarm 8 durumunu ifade eder,string,,,,,,,,,,false
+,5,"005",Indüksiyon,alarm_1,Alarm 1,Alarm 1 durumunu ifade eder,string,,,,,,,,,,false
+,1,"001",Testere,target_cut_size,Kesilecek Ebat,Hedeflenen kesim ölçüsünü ifade eder,number,,,,,∅,,,,,false
+,3,"003",Dikey Pres,return_line_filter_1_dirty,Geri Dönüş Hattı Filtre 1 Kirlilik,Geri dönüş hattı filtre 1 kirlilik durumunu ifade eder,boolean,,,,,,Kirli,Temiz,,FALSE,true
+,3,"003",Dikey Pres,pressure_line_filter_5_dirty,Basınç Hattı Filtre 5 Kirlilik,Basınç hattı filtre 5 kirlilik durumunu ifade eder,boolean,,,,,,Kirli,Temiz,,FALSE,true
+,3,"003",Dikey Pres,alarm_19,Alarm 19,Alarm 19 durumunu ifade eder,string,,,,,,,,,,false
+,2,"002",AbbRobot,alarm_2,Alarm 2,Alarm 2 durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,alarm_2,Alarm 2,Alarm 2 durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,alarm_20,Alarm 20,Alarm 20 durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,alarm_10,Alarm 10,Alarm 10 durumunu ifade eder,string,,,,,,,,,,false
+,3,"003",Dikey Pres,alarm_13,Alarm 13,Alarm 13 durumunu ifade eder,string,,,,,,,,,,false
+,3,"003",Dikey Pres,pilot_pump_filter_2_dirty,Pilot Pompa Filtre 2 Kirlilik,Pilot pompa filtre 2 kirlilik durumunu ifade eder,boolean,,,,,,Kirli,Temiz,,FALSE,true
+,1,"001",Testere,alarm_13,Alarm 13,Alarm 13 durumunu ifade eder,string,,,,,,,,,,false
+,2,"002",AbbRobot,alarm_16,Alarm 16,Alarm 16 durumunu ifade eder,string,,,,,,,,,,false
+,3,"003",Dikey Pres,pump_5_suction_valve_ok,Pompa 5 Emiş Valfi Durumu,Pompa 5 emiş valfinin sağlamlık durumunu ifade eder,boolean,,,,,,OK,Arızalı,,TRUE,true
+,4,"004",Yatay Pres,horizontal_press_pressure,Yatay Pres Basıncı,Yatay pres basınç değerini ifade eder,number,0.0000,120.0000,,,bar,,,,,true
+,7,"007",Fanuc CNC,execution,Execution Status,Makinenin çalışıp çalışmadığını ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,part_count,Part Count,Üretilen toplam parça sayısını ifade eder,number,,,,,,,,,,false
+,1,"001",Testere,total_cut_count,Total Cut Count,Toplam yapılan kesim adedini ifade eder,number,,,,,,,,,,false
+,2,"002",AbbRobot,alarm_11,Alarm 11,Alarm 11 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,axis_x_machine,X Machine Position,X Machine Position,number,,,,,,,,,,false
+,3,"003",Dikey Pres,alarm_11,Alarm 11,Alarm 11 durumunu ifade eder,string,,,,,,,,,,false
+,5,"005",Indüksiyon,mode,Makine Çalışma Modu,Makinenin çalışma modunu ifade eder,number,,,,,,,,,,false
+,1,"001",Testere,status,Machine Status,Makinenin genel çalışma durumunu ifade eder,string,,,,,,,,,,false
+,1,"001",Testere,alarm_20,Alarm 20,Alarm 20 durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,ejector_up_down,Ejector Position,İtici mekanizmasının yukarı veya aşağı konumunu ifade eder,boolean,,,,,,,,,,false
+,3,"003",Dikey Pres,pump_1_suction_valve_ok,Pompa 1 Emiş Valfi Durumu,Pompa 1 emiş valfinin sağlamlık durumunu ifade eder,boolean,,,,,,OK,Arızalı,,TRUE,true
+,1,"001",Testere,execution,Execution Status,Makinenin çalışıp çalışmadığını ifade eder,string,,,,,,,,,,false
+,3,"003",Dikey Pres,alarm_20,Alarm 20,Alarm 20 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,line,Production Line,Üretim hattı bilgisini ifade eder,string,,,,,,,,,,false
+,3,"003",Dikey Pres,alarm_12,Alarm 12,Alarm 12 durumunu ifade eder,string,,,,,,,,,,false
+,3,"003",Dikey Pres,alarm_7,Alarm 7,Alarm 7 durumunu ifade eder,string,,,,,,,,,,false
+,1,"001",Testere,alarm_2,Alarm 2,Alarm 2 durumunu ifade eder,string,,,,,,,,,,false
+,3,"003",Dikey Pres,alarm_3,Alarm 3,Alarm 3 durumunu ifade eder,string,,,,,,,,,,false
+,3,"003",Dikey Pres,pilot_pump_active,Pilot Pompası,Pilot pompanın aktif durumunu ifade eder,boolean,,,,,,Aktif,Pasif,,TRUE,true
+,3,"003",Dikey Pres,alarm_8,Alarm 8,Alarm 8 durumunu ifade eder,string,,,,,,,,,,false
+,2,"002",AbbRobot,robot_id,Robot ID,Bağlı robotun kimliğini ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,pump_4_suction_valve_ok,Pompa 4 Emiş Valfi Durumu,Pompa 4 emiş valfinin sağlamlık durumunu ifade eder,boolean,,,,,,,,,,false
+,6,"006",Kumlama,execution,Execution Status,Makinenin çalışıp çalışmadığını ifade eder,string,,,,,,,,,,false
+TST001,1,"001",Testere,total_cut_count,Total Cut Count,Toplam yapılan kesim adedini ifade eder,number,0.0000,100.0000,,,,,,,,false
+,3,"003",Dikey Pres,part_count,Part Count,Üretilen toplam parça sayısını ifade eder,number,,,,,,,,,,false
+,2,"002",AbbRobot,alarm_10,Alarm 10,Alarm 10 durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,execution,Execution Status,Makinenin çalışıp çalışmadığını ifade eder,string,,,,,,,,,,false
+,1,"001",Testere,alarm_9,Alarm 9,Alarm 9 durumunu ifade eder,string,,,,,,,,,,false
+,3,"003",Dikey Pres,pilot_pump_filter_1_dirty,Pilot Pompa Filtre 1 Kirlilik,Pilot pompa filtre 1 kirlilik durumunu ifade eder,boolean,,,,,,Kirli,Temiz,,FALSE,true
+,1,"001",Testere,alarm_12,Alarm 12,Alarm 12 durumunu ifade eder,string,,,,,,,,,,false
+,2,"002",AbbRobot,alarm_3,Alarm 3,Alarm 3 durumunu ifade eder,string,,,,,,,,,,false
+,1,"001",Testere,main_motor_current,Ana Motor Akımı,Ana motorun çektiği akımı ifade eder,number,0.0000,23.0000,,,A,,,,,true
+,7,"007",Fanuc CNC,program_line,Program Line,Program Line,string,,,,,,,,,,false
+,3,"003",Dikey Pres,alarm_18,Alarm 18,Alarm 18 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,program_comment,Program Comment,Çalışan programa ait açıklamayı ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,alarm_8,Alarm 8,Alarm 8 durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,alarm_3,Alarm 3,Alarm 3 durumunu ifade eder,string,,,,,,,,,,false
+,2,"002",AbbRobot,cycle_2_time,Cycle 2 Time,İkinci çevrim süresini ifade eder,number,,,,,,,,,,false
+,9,"009",Press 500 Ton,execution,Execution Status,Makinenin çalışıp çalışmadığını ifade eder,string,,,,,,,,,,false
+,3,"003",Dikey Pres,status,Machine Status,Makinenin genel çalışma durumunu ifade eder,string,,,,,,,,,,false
+,5,"005",Indüksiyon,alarm_15,Alarm 15,Alarm 15 durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,main_pressure,Ana Basınç,Ana hidrolik basınç değerini ifade eder,number,,,,,,,,,,false
+,7,"007",Fanuc CNC,alarm_7,Alarm 7,Alarm 7 durumunu ifade eder,string,,,,,,,,,,false
+,3,"003",Dikey Pres,alarm_1,Alarm 1,Alarm 1 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,alarm_3,Alarm 3,Alarm 3 durumunu ifade eder,string,,,,,,,,,,false
+,2,"002",AbbRobot,mode,Makine Çalışma Modu,Makinenin çalışma modunu ifade eder,number,,,,,,,,,,false
+,2,"002",AbbRobot,fixture_2_count,Fixture 2 Count,Fikstür 2 parça sayısını ifade eder,number,,,,,,,,,,false
+,3,"003",Dikey Pres,pressure_line_filter_3_dirty,Basınç Hattı Filtre 3 Kirlilik,Basınç hattı filtre 3 kirlilik durumunu ifade eder,boolean,,,,,,Kirli,Temiz,,FALSE,true
+,3,"003",Dikey Pres,alarm_21,Alarm 21,Alarm 21 durumunu ifade eder,string,,,,,,,,,,false
+,2,"002",AbbRobot,fixture_1_data,Fixture 1 Data,Fikstür 1 verilerini ifade eder,string,,,,,,,,,,false
+,5,"005",Indüksiyon,alarm_5,Alarm 5,Alarm 5 durumunu ifade eder,string,,,,,,,,,,false
+,3,"003",Dikey Pres,pump_3_suction_valve_ok,Pompa 3 Emiş Valfi Durumu,Pompa 3 emiş valfinin sağlamlık durumunu ifade eder,boolean,,,,,,OK,Arızalı,,TRUE,true
+,7,"007",Fanuc CNC,alarm_1,Alarm 1,Alarm 1 durumunu ifade eder,string,,,,,,,,,,false
+,1,"001",Testere,alarm_1,Alarm 1,Alarm 1 durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,alarm_6,Alarm 6,Alarm 6 durumunu ifade eder,string,,,,,,,,,,false
+,3,"003",Dikey Pres,alarm_22,Alarm 22,Alarm 22 durumunu ifade eder,string,,,,,,,,,,false
+,1,"001",Testere,total_cut_area,Total Cut Area,Toplam kesim alanını ifade eder,number,,,,,,,,,,false
+,3,"003",Dikey Pres,main_pressure,Ana Basınç,Ana hidrolik basınç değerini ifade eder,number,0.0000,110.0000,,,bar,,,,,true
+,3,"003",Dikey Pres,pressure_line_filter_2_dirty,Basınç Hattı Filtre 2 Kirlilik,Basınç hattı filtre 2 kirlilik durumunu ifade eder,boolean,,,,,,Kirli,Temiz,,FALSE,true
+,3,"003",Dikey Pres,horitzonal_infeed_speed,Yatay Pres İşe Giriş Hızı,Yatay besleme hızını ifade eder,number,-300.0000,300.0000,,,mm/sn,,,0.0000,,true
+,5,"005",Indüksiyon,current,Akım,,number,,,,,A,,,,,false
+,2,"002",AbbRobot,alarm_9,Alarm 9,Alarm 9 durumunu ifade eder,string,,,,,,,,,,false
+,1,"001",Testere,alarm_11,Alarm 11,Alarm 11 durumunu ifade eder,string,,,,,,,,,,false
+,5,"005",Indüksiyon,alarm_7,Alarm 7,Alarm 7 durumunu ifade eder,string,,,,,,,,,,false
+,2,"002",AbbRobot,alarm_12,Alarm 12,Alarm 12 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,alarm_13,Alarm 13,Alarm 13 durumunu ifade eder,string,,,,,,,,,,false
+,5,"005",Indüksiyon,estimated_part_temperature,Tahmini Parça Sıcaklığı,Tahmini parça sıcaklığını ifade eder,number,,,,,°C,,,,,false
+,7,"007",Fanuc CNC,axis_x_absolute,X Absolute Position,X Absolute Position,number,,,,,,,,,,false
+,4,"004",Yatay Pres,pressure_line_filter_1_dirty,Basınç Hattı Filtre 1 Kirlilik,Basınç hattı filtre 1 kirlilik durumunu ifade eder,boolean,,,,,,,,,,false
+,1,"001",Testere,alarm_18,Alarm 18,Alarm 18 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,status,Machine Status,Makinenin genel çalışma durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,alarm_22,Alarm 22,Alarm 22 durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,punch_active,Punch Active,Zımba mekanizmasının aktif olup olmadığını ifade eder,boolean,,,,,,Aktif,Aktif Değil,,TRUE,false
+,1,"001",Testere,cut_length,Kesilecek Uzunluk,Kesim uzunluğunu ifade eder,number,,,,,mm,,,,,false
+,5,"005",Indüksiyon,power_percent,Güç (Yüzde),,number,0.0000,100.0000,,,%,,,,,false
+,3,"003",Dikey Pres,horizontal_press_pressure,Yatay Pres Basıncı,Yatay pres basınç değerini ifade eder,number,0.0000,120.0000,,,bar,,,,,true
+,7,"007",Fanuc CNC,axis_x_distance,X Distance To Go,X Distance To Go,number,,,,,,,,,,false
+,7,"007",Fanuc CNC,z_servo_condition,Z Servo Durumu,Z Servo Durumu,string,,,,,,,,,,false
+,4,"004",Yatay Pres,estop,Emergency Stop,Acil stop durumunu ifade eder,string,,,,,,,,,,false
+,1,"001",Testere,alarm_7,Alarm 7,Alarm 7 durumunu ifade eder,string,,,,,,,,,,false
+,3,"003",Dikey Pres,punch_active,Punch Active,Zımba mekanizmasının aktif olup olmadığını ifade eder,boolean,,,,,,Aktif,Aktif Değil,,TRUE,false
+,2,"002",AbbRobot,fixture_mode,Fixture Mode,Fikstür çalışma modunu ifade eder,string,,,,,,,,,,false
+,3,"003",Dikey Pres,alarm_10,Alarm 10,Alarm 10 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,alarm_17,Alarm 17,Alarm 17 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,spindle_override,Spindle Override,"",number,,,,,,,,,,false
+,5,"005",Indüksiyon,alarm_8,Alarm 8,Alarm 8 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,program_number,Program Number,Program Number,number,,,,,,,,,,false
+,1,"001",Testere,alarm_15,Alarm 15,Alarm 15 durumunu ifade eder,string,,,,,,,,,,false
+,3,"003",Dikey Pres,vertical_infeed_speed,Dikey Pres İşe Giriş Hızı,Dikey besleme hızını ifade eder,number,-300.0000,300.0000,,,mm/sn,,,0.0000,,true
+,3,"003",Dikey Pres,pump_2_suction_valve_ok,Pompa 2 Emiş Valfi Durumu,Pompa 2 emiş valfinin sağlamlık durumunu ifade eder,boolean,,,,,,OK,Arızalı,,TRUE,true
+,4,"004",Yatay Pres,return_line_filter_1_dirty,Geri Dönüş Hattı Filtre 1 Kirlilik,Geri dönüş hattı filtre 1 kirlilik durumunu ifade eder,boolean,,,,,,,,,,false
+,4,"004",Yatay Pres,alarm_17,Alarm 17,Alarm 17 durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,alarm_11,Alarm 11,Alarm 11 durumunu ifade eder,string,,,,,,,,,,false
+,1,"001",Testere,cut_time,Kesim Süresi,Kesim süresini ifade eder,number,0.0000,45.0000,,,sn,,,,,true
+,7,"007",Fanuc CNC,axis_z_absolute,Z Absolute Position,Z Absolute Position,number,,,,,,,,,,false
+,3,"003",Dikey Pres,alarm_14,Alarm 14,Alarm 14 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,alarm_10,Alarm 10,Alarm 10 durumunu ifade eder,string,,,,,,,,,,false
+,1,"001",Testere,servo_torque,Servo Motor Tork,Servo motor hızını ifade eder,number,0.0000,50.0000,,,%,,,,,true
+,7,"007",Fanuc CNC,alarm_6,Alarm 6,Alarm 6 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,alarm_15,Alarm 15,Alarm 15 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,alarm_12,Alarm 12,Alarm 12 durumunu ifade eder,string,,,,,,,,,,false
+,7,"007",Fanuc CNC,program_block,Program Block,Program Block,string,,,,,,,,,,false
+,3,"003",Dikey Pres,execution,Execution Status,Makinenin çalışıp çalışmadığını ifade eder,string,,,,,,,,,,false
+,2,"002",AbbRobot,alarm_20,Alarm 20,Alarm 20 durumunu ifade eder,string,,,,,,,,,,false
+,4,"004",Yatay Pres,pilot_pump_active,Pilot Pompası,Pilot pompanın aktif durumunu ifade eder,boolean,,,,,,,,,,false
+,4,"004",Yatay Pres,mode,Makine Çalışma Modu,Makinenin çalışma modunu ifade eder,number,,,,,,,,,,false
+,7,"007",Fanuc CNC,alarm_5,Alarm 5,Alarm 5 durumunu ifade eder,string,,,,,,,,,,false

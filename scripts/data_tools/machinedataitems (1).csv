@@ -1,0 +1,2 @@
+"machinetypeid","machinetypecode","machinetypename","dataitemid","name","description","data_type","min_value","max_value","not_allowed_values","allowed_values","unit","true_label","false_label","center","success_key","is_violation_enabled"
+1,"001",Testere,total_cut_count,Total Cut Count,Toplam yapılan kesim adedini ifade eder,number,0.0000,100.0000,,,,,,,,false

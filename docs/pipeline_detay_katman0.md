@@ -1,40 +1,105 @@
-# 🏭 Katman 0 — Veri Girişi ve Doğrulama
+# Katman 0 — Veri Doğrulama
 
-> **Son güncelleme:** 2026-03-13  
-> **Durum:** ✅ Güncel  
-> **Sorumlu Modül:** `src/core/data_validator.py`
+> **Modül:** `src/core/data_validator.py`
+> **Son güncelleme:** 2026-03-24
 
 ---
 
-Bu katman **güvenlik görevlisi** gibi davranır. Ham Kafka verisini inceler, sorunlu olanları reddeder ya da işaretler. Kabul edilen veri temiz ve tip-güvenlidir. Bu katmanı `src/core/data_validator.py` yönetir.
+## Ne Yapar?
 
-**Neden bu katman kritik?**
-Kafka'dan gelen `result` alanları *her zaman string*. `"52.1"` ile `52.1` arasındaki fark matematiksel olarak kritik. Üstelik `"UNAVAILABLE"` değerini `float()`'a verirseniz program çöker. Bu katman olmadan sonraki katmanlar her ölçümde hatayla karşılaşır.
+Kafka'dan gelen ham JSON mesajını alır, güvenilirliğini kontrol eder ve temiz bir Python dict olarak sonraki katmana iletir. Bu katmandan geçmeyen veri sisteme girmez.
+
+Neden gerekli? Fabrikadaki PLC cihazları farklı üreticilerden, farklı yazılım versiyonlarından. Biri sayıyı `"37,02"` yazar, diğeri `"37.02"`. Biri sensör okuyamazsa `"UNAVAILABLE"` gönderir. Ağ gecikmesiyle 8 dakika geç gelen mesajlar trend hesabını bozar. Bu katman bunların tamamını ele alır.
+
+---
+
+## Kontroller (Sırasıyla)
 
 ### 1. Schema Doğrulama
-Her Kafka mesajında bulunması *zorunlu* alanları kontrol eder. Eksikse mesaj atlanır.
-Gerekli yollar: `header.sender`, `header.creationTime` ve `streams[].componentStream[].componentId`.
+`header.sender`, `header.creationTime` ve `streams` alanları zorunlu. Bunlardan biri yoksa mesaj tamamen reddedilir, sonraki adımlara geçilmez.
 
-### 2. UNAVAILABLE → None Dönüşümü + Ondalık Virgül Düzeltmesi
-> **⚠️ Saha Bulgusu:** Kafka verilerinde tüm sayısal değerler **Türkçe locale** ile geliyor. Ondalık ayracı nokta değil **virgül** (`"37,022568"`). `float()` virgülle çalışmaz — bu katman bunu düzelterek eksik veriyi işleme sokmadan yoksayar:
+### 2. Sayısal Dönüşüm — `safe_numeric()`
 
 ```python
-def safe_numeric(value) -> float | None:
-    if value is None or str(value).strip().upper() in ("UNAVAILABLE", ""):
-        return None
-    try:
-        normalized = str(value).strip().replace(",", ".")  # TR locale fix
-        return float(normalized)
-    except (ValueError, TypeError):
-        return None
+safe_numeric("37,02")       → 37.02   (Türkçe locale virgül → nokta)
+safe_numeric("UNAVAILABLE") → None
+safe_numeric("")            → None
+safe_numeric("52.1")        → 52.1
 ```
 
-### 3. Timestamp Gecikme Kontrolü (Stale Data)
-Kafka consumer geride kalırsa (örn. ağ sorunu) eski mesajlar sırayla işlenir. 5 dakikadan eski veriler (`> 300` saniye) trend hesabını bozmasın diye **TrendDetector'a iletilmez**. Ancak anlık eşik (Threshold) hesabına dahil edilir.
+Bilinen metin değerleri (`"RUNNING"`, `"AUTO"`, `"FALSE"` vb.) DEBUG seviyesinde loglanır — bunlar format hatası değil, beklenen durum metinleridir. Rakam içeren ama parse edilemeyen değerler (`"37.5 bar"` gibi) WARNING verir çünkü o sensörün formatı değişmiş olabilir.
 
-### 4. Spike Filtresi
-Sensör arızası veya geçici elektrik gürültüsü nedeniyle değer aniden anlamsız yerlere sıçrayabilir.
-**Mantık (5σ Kuralı):** Yeni değer, mevcut EWMA ortalamasından 5 standart sapma uzaktaysa spike sayılır ve reddedilir. Bu olasılık 3 milyonda 1'dir.
+### 3. Boolean Dönüşüm — `safe_bool()`
 
-### 5. Startup Mask
-Hidrolik presler soğuk başlar. İlk 60 dakika sıcaklık hızla yükselir — bu bir arıza trendi değil, ısınmadır. Sistem `IDLE` → `RUNNING` durumunu yakalar ve sonraki 60 dakikada gelen veriler için trend tabanlı erken uyarıları (TrendDetector) **maskeler (kapatır)**. Üst limit aşımı (Threshold) devam eder.
+```python
+safe_bool("TRUE")        → True
+safe_bool("FALSE")       → False
+safe_bool("0")           → False
+safe_bool("1")           → True
+safe_bool("UNAVAILABLE") → None
+```
+
+### 4. Stale (Bayat) Veri Kontrolü
+
+Mesajın `creationTime` alanı şu andan 5 dakikadan eskiyse `is_stale=True` olarak işaretlenir. Bu mesaj sisteme kabul edilir ama trend hesabı dışında tutulur. Neden tamamen reddedilmiyor? Çünkü EWMA güncelleme ve sayaç artırma için yine de bilgi taşır.
+
+```python
+STALE_SECONDS = 300  # 5 dakika
+```
+
+### 5. Spike Filtresi
+
+İlk 15 ölçüm beklenir (ısınma için). Sonrasında her yeni değer için Z-skoru hesaplanır:
+
+```
+Z = |değer - EWMA_ortalama| / EWMA_std
+```
+
+Z > 5.0 ise spike sayılır ve sessizce atılır. Elektrik sıçraması, sensör arızası gibi anlık fiziksel anomaliler gerçek arıza olarak yorumlanmamalıdır.
+
+```python
+SPIKE_SIGMA          = 5.0
+MIN_SAMPLES_FOR_SPIKE = 15
+```
+
+### 6. Startup Maskesi
+
+Makine `IDLE/STOPPED → RUNNING` geçişi yaptığında ilk 60 dakika `is_startup=True` işaretlenir. Bu sürede trend hesabı yapılmaz. Neden? Soğuk başlatma sırasında yağ sıcaklığı, basınç, hız değerleri hızla değişir — bu normaldir, alarm üretmemeli.
+
+```python
+STARTUP_MINUTES = 60
+```
+
+---
+
+## Çıktı Formatı
+
+Her makine için şu dict döner:
+
+```python
+{
+    "machine_id":   "HPR001",
+    "machine_type": "HPR",
+    "timestamp":    "2026-03-24T14:22:11Z",
+    "is_stale":     False,   # True ise trend hesabına katılmaz
+    "is_startup":   False,   # True ise trend hesabına katılmaz
+    "numeric":      {"main_pressure": 87.3, "oil_tank_temperature": 38.4, ...},
+    "boolean":      {"pressure_line_filter_1_dirty": False, ...},
+    "text":         {"execution": "RUNNING", "mode": "AUTO"},
+}
+```
+
+Bir mesajda birden fazla makine olabilir. Fonksiyon liste döner.
+
+---
+
+## Önemli Not: `horitzonal_infeed_speed`
+
+Kodda `horitzonal_infeed_speed` yazılı (z harfi fazla). Bu bir yazım hatası değil — PLC cihazının kendisi bu ismi kullanıyor. Kafka mesajlarında da bu şekilde geliyor. **Değiştirme.**
+
+---
+
+## Bağlantılar
+
+- Sonraki katman: `docs/pipeline_detay_katman1.md`
+- Kaynak kod: `src/core/data_validator.py`

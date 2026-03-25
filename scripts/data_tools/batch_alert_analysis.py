@@ -26,7 +26,7 @@ print("╚" + "═"*60 + "╝")
 # ──────────────────────────────────────────────────────────────
 print("\n📂 violation_log.json yükleniyor...\n")
 
-with open("violation_log.json") as f:
+with open("data/violation_log.json") as f:
     violation_data = json.load(f)
 
 # Windows'ları çıkar

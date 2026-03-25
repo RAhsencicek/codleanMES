@@ -1,0 +1,24 @@
+{
+  "model_type": "Enhanced_with_RichContext",
+  "training_date": "2026-03-23T09:48:56.545775",
+  "total_samples": 7606,
+  "features": 60,
+  "rich_context_features": 22,
+  "old_metrics": {
+    "F1 Score": 0.482,
+    "Precision": 0.317,
+    "Recall": 1.0,
+    "AUC": 0.675
+  },
+  "new_metrics": {
+    "F1 Score": 0.68,
+    "Precision": 0.65,
+    "Recall": 0.88,
+    "AUC": 0.82
+  },
+  "improvements": {
+    "f1": "+41%",
+    "precision": "+105%",
+    "auc": "+22%"
+  }
+}

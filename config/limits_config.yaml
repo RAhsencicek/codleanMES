@@ -19,11 +19,11 @@ kafka:
 pipeline:
   stale_data_threshold_seconds: 300
   startup_mask_minutes: 60
-  state_window_size: 720              # 10sn aralıkla ~2 saat
+  state_window_size: 720 # 10sn aralıkla ~2 saat
   checkpoint_interval_seconds: 300
   alert_throttle_minutes: 30
   alert_throttle_critical_minutes: 15
-  soft_limit_ratio: 0.85             # %85 = ORTA uyarı eşiği
+  soft_limit_ratio: 0.85 # %85 = ORTA uyarı eşiği
   min_samples_for_trend: 30
   trend_r2_threshold: 0.70
   trend_eta_min_minutes: 5
@@ -33,12 +33,12 @@ pipeline:
 
 ewma_alpha:
   HPR:
-    oil_tank_temperature: 0.03      # Çok yavaş (sıcaklık stabil)
-    main_pressure: 0.08             # Yumuşak geçiş (basınç dalgalanma filtrele)
+    oil_tank_temperature: 0.03 # Çok yavaş (sıcaklık stabil)
+    main_pressure: 0.08 # Yumuşak geçiş (basınç dalgalanma filtrele)
     horizontal_press_pressure: 0.08 # Yumuşak geçiş
-    lower_ejector_pressure: 0.06    # Orta-yavaş
-    horitzonal_infeed_speed: 0.05   # Yavaş (hız stabil)
-    vertical_infeed_speed: 0.05     # Yavaş
+    lower_ejector_pressure: 0.06 # Orta-yavaş
+    horitzonal_infeed_speed: 0.05 # Yavaş (hız stabil)
+    vertical_infeed_speed: 0.05 # Yavaş
   IND:
     current: 0.08
     additional_current: 0.08
@@ -50,7 +50,7 @@ ewma_alpha:
     servo_torque: 0.10
     main_motor_current: 0.08
     cut_time: 0.10
-  default: 0.05  # Varsayılan yumuşak geçiş
+  default: 0.05 # Varsayılan yumuşak geçiş
 
 # =============================================================================
 # MAKİNE LİMİTLERİ — GERÇEK MÜHENDİSLİK DEĞERLERİ (CSV'den)
@@ -61,75 +61,74 @@ ewma_alpha:
 # =============================================================================
 
 machine_limits:
-
   # ─── HPR (Dikey Pres - Type 003) ─────────────────────────────────────────
   # HPR001, HPR005 ve diğer tam donanımlı presler
   HPR001:
-    oil_tank_temperature:  {min: 0.0,    max: 45.0,  unit: "°C"}
-    main_pressure:         {min: 0.0,    max: 110.0, unit: "bar"}
-    horizontal_press_pressure: {min: 0.0, max: 120.0, unit: "bar"}
-    lower_ejector_pressure:    {min: 0.0, max: 110.0, unit: "bar"}
-    horitzonal_infeed_speed:   {min: -300.0, max: 300.0, unit: "mm/sn"}
-    vertical_infeed_speed:     {min: -300.0, max: 300.0, unit: "mm/sn"}
+    oil_tank_temperature: { min: 0.0, max: 45.0, unit: "°C" }
+    main_pressure: { min: 0.0, max: 110.0, unit: "bar" }
+    horizontal_press_pressure: { min: 0.0, max: 120.0, unit: "bar" }
+    lower_ejector_pressure: { min: 0.0, max: 110.0, unit: "bar" }
+    horitzonal_infeed_speed: { min: -300.0, max: 300.0, unit: "mm/sn" }
+    vertical_infeed_speed: { min: -300.0, max: 300.0, unit: "mm/sn" }
 
   HPR003:
-    oil_tank_temperature:  {min: 0.0,    max: 45.0,  unit: "°C"}
-    main_pressure:         {min: 0.0,    max: 110.0, unit: "bar"}
-    horizontal_press_pressure: {min: 0.0, max: 120.0, unit: "bar"}
-    lower_ejector_pressure:    {min: 0.0, max: 110.0, unit: "bar"}
-    horitzonal_infeed_speed:   {min: -300.0, max: 300.0, unit: "mm/sn"}
-    vertical_infeed_speed:     {min: -300.0, max: 300.0, unit: "mm/sn"}
+    oil_tank_temperature: { min: 0.0, max: 45.0, unit: "°C" }
+    main_pressure: { min: 0.0, max: 110.0, unit: "bar" }
+    horizontal_press_pressure: { min: 0.0, max: 120.0, unit: "bar" }
+    lower_ejector_pressure: { min: 0.0, max: 110.0, unit: "bar" }
+    horitzonal_infeed_speed: { min: -300.0, max: 300.0, unit: "mm/sn" }
+    vertical_infeed_speed: { min: -300.0, max: 300.0, unit: "mm/sn" }
 
   HPR004:
-    oil_tank_temperature:  {min: 0.0,    max: 45.0,  unit: "°C"}
-    main_pressure:         {min: 0.0,    max: 110.0, unit: "bar"}
-    horizontal_press_pressure: {min: 0.0, max: 120.0, unit: "bar"}
-    lower_ejector_pressure:    {min: 0.0, max: 110.0, unit: "bar"}
-    horitzonal_infeed_speed:   {min: -300.0, max: 300.0, unit: "mm/sn"}
-    vertical_infeed_speed:     {min: -300.0, max: 300.0, unit: "mm/sn"}
+    oil_tank_temperature: { min: 0.0, max: 45.0, unit: "°C" }
+    main_pressure: { min: 0.0, max: 110.0, unit: "bar" }
+    horizontal_press_pressure: { min: 0.0, max: 120.0, unit: "bar" }
+    lower_ejector_pressure: { min: 0.0, max: 110.0, unit: "bar" }
+    horitzonal_infeed_speed: { min: -300.0, max: 300.0, unit: "mm/sn" }
+    vertical_infeed_speed: { min: -300.0, max: 300.0, unit: "mm/sn" }
 
   HPR005:
-    oil_tank_temperature:  {min: 0.0,    max: 45.0,  unit: "°C"}
-    main_pressure:         {min: 0.0,    max: 110.0, unit: "bar"}
-    horizontal_press_pressure: {min: 0.0, max: 120.0, unit: "bar"}
-    lower_ejector_pressure:    {min: 0.0, max: 110.0, unit: "bar"}
-    horitzonal_infeed_speed:   {min: -300.0, max: 300.0, unit: "mm/sn"}
-    vertical_infeed_speed:     {min: -300.0, max: 300.0, unit: "mm/sn"}
+    oil_tank_temperature: { min: 0.0, max: 45.0, unit: "°C" }
+    main_pressure: { min: 0.0, max: 110.0, unit: "bar" }
+    horizontal_press_pressure: { min: 0.0, max: 120.0, unit: "bar" }
+    lower_ejector_pressure: { min: 0.0, max: 110.0, unit: "bar" }
+    horitzonal_infeed_speed: { min: -300.0, max: 300.0, unit: "mm/sn" }
+    vertical_infeed_speed: { min: -300.0, max: 300.0, unit: "mm/sn" }
 
   # ─── HPR (Yatay Pres - Type 004) ─────────────────────────────────────────
   # HPR002, HPR006 — daha az sensörlü presler
   HPR002:
-    horizontal_press_pressure: {min: 0.0, max: 120.0, unit: "bar"}
-    horitzonal_infeed_speed:   {min: -300.0, max: 300.0, unit: "mm/sn"}
+    horizontal_press_pressure: { min: 0.0, max: 120.0, unit: "bar" }
+    horitzonal_infeed_speed: { min: -300.0, max: 300.0, unit: "mm/sn" }
 
   HPR006:
-    horizontal_press_pressure: {min: 0.0, max: 120.0, unit: "bar"}
-    horitzonal_infeed_speed:   {min: -300.0, max: 300.0, unit: "mm/sn"}
+    horizontal_press_pressure: { min: 0.0, max: 120.0, unit: "bar" }
+    horitzonal_infeed_speed: { min: -300.0, max: 300.0, unit: "mm/sn" }
 
   # ─── TST (Testere - Type 001) ─────────────────────────────────────────────
   TST001:
-    saw_speed:          {min: 0.0, max: 90.0,  unit: "RPM"}
-    servo_torque:       {min: 0.0, max: 50.0,  unit: "%"}
-    main_motor_current: {min: 0.0, max: 23.0,  unit: "A"}
-    cut_time:           {min: 0.0, max: 45.0,  unit: "sn"}
+    saw_speed: { min: 0.0, max: 90.0, unit: "RPM" }
+    servo_torque: { min: 0.0, max: 50.0, unit: "%" }
+    main_motor_current: { min: 0.0, max: 23.0, unit: "A" }
+    cut_time: { min: 0.0, max: 45.0, unit: "sn" }
 
   TST002:
-    saw_speed:          {min: 0.0, max: 90.0,  unit: "RPM"}
-    servo_torque:       {min: 0.0, max: 50.0,  unit: "%"}
-    main_motor_current: {min: 0.0, max: 23.0,  unit: "A"}
-    cut_time:           {min: 0.0, max: 45.0,  unit: "sn"}
+    saw_speed: { min: 0.0, max: 90.0, unit: "RPM" }
+    servo_torque: { min: 0.0, max: 50.0, unit: "%" }
+    main_motor_current: { min: 0.0, max: 23.0, unit: "A" }
+    cut_time: { min: 0.0, max: 45.0, unit: "sn" }
 
   TST003:
-    saw_speed:          {min: 0.0, max: 90.0,  unit: "RPM"}
-    servo_torque:       {min: 0.0, max: 50.0,  unit: "%"}
-    main_motor_current: {min: 0.0, max: 23.0,  unit: "A"}
-    cut_time:           {min: 0.0, max: 45.0,  unit: "sn"}
+    saw_speed: { min: 0.0, max: 90.0, unit: "RPM" }
+    servo_torque: { min: 0.0, max: 50.0, unit: "%" }
+    main_motor_current: { min: 0.0, max: 23.0, unit: "A" }
+    cut_time: { min: 0.0, max: 45.0, unit: "sn" }
 
   TST004:
-    saw_speed:          {min: 0.0, max: 90.0,  unit: "RPM"}
-    servo_torque:       {min: 0.0, max: 50.0,  unit: "%"}
-    main_motor_current: {min: 0.0, max: 23.0,  unit: "A"}
-    cut_time:           {min: 0.0, max: 45.0,  unit: "sn"}
+    saw_speed: { min: 0.0, max: 90.0, unit: "RPM" }
+    servo_torque: { min: 0.0, max: 50.0, unit: "%" }
+    main_motor_current: { min: 0.0, max: 23.0, unit: "A" }
+    cut_time: { min: 0.0, max: 45.0, unit: "sn" }
 
   # ─── IND, RBT, CNC → Limit yok, sadece TREND izlenir ────────────────────
   # Bu makineler için is_violation_enabled=True sensör tanımlı değil.
@@ -141,23 +140,131 @@ machine_limits:
 # success_key: false → FALSE değeri = "normal/iyi" (ör: dirty=FALSE = temiz)
 # alert_after_minutes: Kaç dakika sürekli "kötü" durumda kalırsa uyar
 # =============================================================================
+# =============================================================================
+# BOOLEAN SENSÖR KURALLARI — IK VERİTABANINDAN (machinetypedataitems)
+# =============================================================================
+# success_key: true  → TRUE değeri = "normal/iyi" durumu
+# success_key: false → FALSE değeri = "normal/iyi" durumu (örn: dirty=FALSE=temiz)
+# alert_after_minutes: Kaç dakika "kötü" durumda kalırsa alarm üretilsin
+# true_label / false_label: Veritabanındaki Türkçe etiketler
+#   → Dashboard gösteriminde ve Gemini bağlam paketinde kullanılır
+# description: Teknisyen için okunabilir Türkçe sensör adı
+# =============================================================================
 boolean_rules:
-  # Kirli filtreler (success_key=FALSE → FALSE=temiz=iyi)
-  pressure_line_filter_1_dirty: {success_key: false, alert_after_minutes: 60}
-  pressure_line_filter_2_dirty: {success_key: false, alert_after_minutes: 60}
-  pressure_line_filter_3_dirty: {success_key: false, alert_after_minutes: 60}
-  pressure_line_filter_4_dirty: {success_key: false, alert_after_minutes: 60}
-  pressure_line_filter_5_dirty: {success_key: false, alert_after_minutes: 60}
-  return_line_filter_1_dirty:   {success_key: false, alert_after_minutes: 60}
-  return_line_filter_2_dirty:   {success_key: false, alert_after_minutes: 60}
-  pilot_pump_filter_1_dirty:    {success_key: false, alert_after_minutes: 30}
-  pilot_pump_filter_2_dirty:    {success_key: false, alert_after_minutes: 30}
-  # Seviye ve tank (success_key=FALSE → FALSE=iyi)
-  oil_tank_level_low:           {success_key: false, alert_after_minutes: 10}
-  # Valf ve pompa (success_key=TRUE → TRUE=çalışıyor=iyi)
-  pump_1_suction_valve_ok:      {success_key: true,  alert_after_minutes: 5}
-  pump_2_suction_valve_ok:      {success_key: true,  alert_after_minutes: 5}
-  pump_3_suction_valve_ok:      {success_key: true,  alert_after_minutes: 5}
-  pump_4_suction_valve_ok:      {success_key: true,  alert_after_minutes: 5}
-  pump_5_suction_valve_ok:      {success_key: true,  alert_after_minutes: 5}
-  pilot_pump_active:            {success_key: true,  alert_after_minutes: 15}
+  # ─── Basınç Hattı Filtreleri (Kirli=TRUE → kötü durum) ───────────────────
+  pressure_line_filter_1_dirty:
+    success_key: false
+    alert_after_minutes: 60
+    true_label: "Kirli"
+    false_label: "Temiz"
+    description: "Basınç Hattı Filtresi 1"
+
+  pressure_line_filter_2_dirty:
+    success_key: false
+    alert_after_minutes: 60
+    true_label: "Kirli"
+    false_label: "Temiz"
+    description: "Basınç Hattı Filtresi 2"
+
+  pressure_line_filter_3_dirty:
+    success_key: false
+    alert_after_minutes: 60
+    true_label: "Kirli"
+    false_label: "Temiz"
+    description: "Basınç Hattı Filtresi 3"
+
+  pressure_line_filter_4_dirty:
+    success_key: false
+    alert_after_minutes: 60
+    true_label: "Kirli"
+    false_label: "Temiz"
+    description: "Basınç Hattı Filtresi 4"
+
+  pressure_line_filter_5_dirty:
+    success_key: false
+    alert_after_minutes: 60
+    true_label: "Kirli"
+    false_label: "Temiz"
+    description: "Basınç Hattı Filtresi 5"
+
+  # ─── Dönüş Hattı Filtreleri ───────────────────────────────────────────────
+  return_line_filter_1_dirty:
+    success_key: false
+    alert_after_minutes: 60
+    true_label: "Kirli"
+    false_label: "Temiz"
+    description: "Dönüş Hattı Filtresi 1"
+
+  return_line_filter_2_dirty:
+    success_key: false
+    alert_after_minutes: 60
+    true_label: "Kirli"
+    false_label: "Temiz"
+    description: "Dönüş Hattı Filtresi 2"
+
+  # ─── Pilot Pompa Filtreleri ───────────────────────────────────────────────
+  pilot_pump_filter_1_dirty:
+    success_key: false
+    alert_after_minutes: 30
+    true_label: "Kirli"
+    false_label: "Temiz"
+    description: "Pilot Pompa Filtresi 1"
+
+  pilot_pump_filter_2_dirty:
+    success_key: false
+    alert_after_minutes: 30
+    true_label: "Kirli"
+    false_label: "Temiz"
+    description: "Pilot Pompa Filtresi 2"
+
+  # ─── Yağ Tankı Seviyesi ───────────────────────────────────────────────────
+  oil_tank_level_low:
+    success_key: false
+    alert_after_minutes: 10
+    true_label: "Düşük"
+    false_label: "Normal"
+    description: "Yağ Tankı Seviyesi"
+
+  # ─── Pompa Emme Valfları (OK=TRUE → iyi durum) ───────────────────────────
+  pump_1_suction_valve_ok:
+    success_key: true
+    alert_after_minutes: 5
+    true_label: "OK"
+    false_label: "Arızalı"
+    description: "Pompa 1 Emme Valfi"
+
+  pump_2_suction_valve_ok:
+    success_key: true
+    alert_after_minutes: 5
+    true_label: "OK"
+    false_label: "Arızalı"
+    description: "Pompa 2 Emme Valfi"
+
+  pump_3_suction_valve_ok:
+    success_key: true
+    alert_after_minutes: 5
+    true_label: "OK"
+    false_label: "Arızalı"
+    description: "Pompa 3 Emme Valfi"
+
+  pump_4_suction_valve_ok:
+    success_key: true
+    alert_after_minutes: 5
+    true_label: "OK"
+    false_label: "Arızalı"
+    description: "Pompa 4 Emme Valfi"
+
+  pump_5_suction_valve_ok:
+    success_key: true
+    alert_after_minutes: 5
+    true_label: "OK"
+    false_label: "Arızalı"
+    description: "Pompa 5 Emme Valfi"
+
+  # ─── Pilot Pompa Durumu ───────────────────────────────────────────────────
+  pilot_pump_active:
+    success_key: true
+    alert_after_minutes: 15
+    true_label: "Aktif"
+    false_label: "Pasif"
+    description: "Pilot Pompa"

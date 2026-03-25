@@ -1,110 +1,191 @@
-# 🏭 Codlean MES — Öncü Arıza Tahmin Pipeline Mimari Özeti
+# Codlean MES — Sistem Mimarisi
 
-> **Amaç:** Bu doküman, projeyi bilen ya da bilmeyen herkesin pipeline'ı başından sonuna ana hatlarıyla kavrayabilmesi için yazılmıştır. Detaylı teknik süreçler alt dokümanlara bölünmüştür.
-
-> **Son güncelleme:** 2026-03-18
-> **Durum:** ✅ Faz 2 Aktif — Rich Context Collector devrede | 🎯 30-Gün Veri Kampanyası başladı
+> **Son güncelleme:** 2026-03-24
+> **Durum:** Canlı — Kafka bağlantısı aktif, 6 HPR makinesi izleniyor
 
 ---
 
-## 🏗️ Genel Pipeline Mimarisi (Kuşbakışı)
+## Sistem Ne Yapar?
 
-Pipeline, Kafka'dan ham veriyi okuyup teknisyene anlamlı bir uyarı üretene kadar 4 (+1) ana katmandan geçirir. Her katman bir öncekinden **temizlenmiş ve zenginleştirilmiş** veri alır. Bir katman hata verirse sistem çökmez.
+Fabrikadaki hidrolik pres makinelerinin (HPR) sensör verilerini gerçek zamanlı okur. Anlık limit aşımlarını, yavaş tırmanan tehlikeli trendleri ve karmaşık çok-sensörlü örüntüleri tespit eder. Bir arıza olmadan önce teknisyeni Türkçe, somut, aksiyona dönüştürülebilir bir uyarıyla bilgilendirir.
 
-```text
-┌─────────────────────────────────────────────────────────┐
-│                    KAFKA CONSUMER                       │
-│          mqtt-topic-v2 @ 10.71.120.10:7001              │
-└───────────────────────┬─────────────────────────────────┘
-                        │  Ham JSON mesajı
-                        ▼
-┌─────────────────────────────────────────────────────────┐
-│         KATMAN 0: VERİ GİRİŞ & DOĞRULAMA                │
-│  "Bu veri güvenilir mi, işlenebilir mi?"                │
-│  👉 Detay: [Katman 0 Dokümanı](pipeline_detay_katman0.md)      │
-└───────────────────────┬─────────────────────────────────┘
-                        │  Doğrulanmış veri paketi
-                        ▼
-┌─────────────────────────────────────────────────────────┐
-│         KATMAN 1: STATE STORE (Bellek)                  │
-│  "Bu makinenin geçmişini ve bağlamını biliyorum."       │
-│  👉 Detay: [Katman 1 Dokümanı](pipeline_detay_katman1.md)      │
-└───────────────────────┬─────────────────────────────────┘
-                        │  Zenginleştirilmiş durum verisi
-                        ▼
-┌─────────────────────────────────────────────────────────┐
-│         KATMAN 2: ANALİZ MOTORU                         │
-│  "Bu makinede risk var mı? Varsa ne kadar acil?"        │
-│  👉 Detay: [Katman 2 Dokümanı](pipeline_detay_katman2.md)      │
-└───────────────────────┬─────────────────────────────────┘
-                        │  Risk skoru
-                        ▼
-┌─────────────────────────────────────────────────────────┐
-│         KATMAN 2.5: BAĞLAM MOTORU (PHYSICS & XAI)       │
-│  "KÖK NEDEN nedir? (Physics-Informed + SHAP + NLG)"     │
-│  👉 Detay: [Katman 2 Dokümanı](pipeline_detay_katman2.md)      │
-└───────────────────────┬─────────────────────────────────┘
-                        │  Açıklanabilir (XAI) Cümle
-                        ▼
-┌─────────────────────────────────────────────────────────┐
-│         KATMAN 3: ALERT ENGINE                          │
-│  "Teknisyen ne görüyor? Ne zaman, nasıl bildirilecek?"  │
-│  👉 Detay: [Katman 3 Dokümanı](pipeline_detay_katman3.md)      │
-└─────────────────────────────────────────────────────────┘
+---
+
+## Veri Akışı (Uçtan Uca)
+
+```
+Fabrika PLC'leri
+     │
+     │  JSON mesajı (her ~10 saniyede bir)
+     ▼
+Kafka Broker (mqtt-topic-v2, 10.71.120.10:7001)
+     │
+     ▼
+┌─────────────────────────────────────────────────┐
+│  KATMAN 0 — Veri Doğrulama                      │
+│  data_validator.py                              │
+│  • Virgüllü sayıları düzelt ("37,5" → 37.5)     │
+│  • UNAVAILABLE → None                           │
+│  • 5 dakikadan eski mesajları işaretle           │
+│  • 5-sigma spike filtresi                       │
+│  • Startup maskesi (ilk 60 dakika)              │
+└─────────────────────┬───────────────────────────┘
+                      │ Temiz veri paketi
+                      ▼
+┌─────────────────────────────────────────────────┐
+│  KATMAN 1 — Hafıza (State Store)                │
+│  state_store.py                                 │
+│  • Ring buffer: son 720 ölçüm (~2 saat) RAM'de  │
+│  • EWMA: gürültü filtrelenmiş hareketli ortalama│
+│  • Güven skoru: az veriyle alarm verme          │
+│  • 5 dakikada bir state.json'a yedekle          │
+└─────────────────────┬───────────────────────────┘
+                      │ Geçmiş + anlık durum
+                      ▼
+┌─────────────────────────────────────────────────┐
+│  KATMAN 2 — Analiz Motoru                       │
+│                                                 │
+│  threshold_checker.py                           │
+│  • Anlık değer vs IK limitleri                  │
+│  • %85 soft, %100 yüksek, %110 kritik           │
+│  • Boolean sensörler: kaç dakikadır sorunlu?    │
+│                                                 │
+│  trend_detector.py                              │
+│  • Son 30 ölçüme lineer regresyon               │
+│  • R² ≥ 0.70 → güvenilir trend                 │
+│  • ETA: limite kaç dakika kaldığını hesapla     │
+│                                                 │
+│  risk_scorer.py                                 │
+│  • Threshold + Trend + ML → ensemble 0-100 skor │
+│  • Physics kuralları (causal_rules.json)        │
+│  • Hidrolik zorlanma, termal stres tespiti      │
+└─────────────────────┬───────────────────────────┘
+                      │ Risk skoru + sebepler
+                      ▼
+┌─────────────────────────────────────────────────┐
+│  KATMAN 2.5 — ML & Açıklanabilirlik             │
+│                                                 │
+│  ml_predictor.py                                │
+│  • XGBoost/Random Forest modeli                 │
+│  • State store'dan özellik vektörü oluştur      │
+│  • Anomali olasılığı (0-1) → 0-100 skor         │
+│                                                 │
+│  SHAP → DLIME (fallback) → NLG                  │
+│  • Hangi sensör neden katkıda bulunuyor?        │
+│  • Türkçe açıklama cümlesi üret                 │
+│                                                 │
+│  context_builder.py + llm_engine.py             │
+│  • Alarm sonrası tüm bağlamı Gemini'ye gönder   │
+│  • "Ne oluyor, neden, ne yapmalı?" analizi      │
+└─────────────────────┬───────────────────────────┘
+                      │ Açıklanabilir alarm
+                      ▼
+┌─────────────────────────────────────────────────┐
+│  KATMAN 3 — Alert Engine                        │
+│  alert_engine.py                                │
+│  • Throttle: 30 dk normal, 15 dk kritik         │
+│  • FAULT vs PRE_FAULT_WARNING ayrımı            │
+│  • Renkli terminal paneli (rich)                │
+└─────────────────────┬───────────────────────────┘
+                      │
+                      ▼
+              Teknisyen Ekranı
+              (2×3 HPR grid dashboard)
 ```
 
 ---
 
-## 🛠️ Modüller ve Sorumluluklar (GÜNCEL YAPI - 18 Mart 2026)
+## Modül Haritası
 
-| Modül | Sorumluluk | Girdi | Çıktı |
-|-------|-----------|-------|-------|
-| `src/app/hpr_monitor.py` | Ana Canlı İzleme Sistemi | Kafka topic | UI Console Log |
-| `src/core/data_validator.py` | Schema, UNAVAILABLE, spike, stale, startup | Raw JSON | Temiz dict veya None |
-| `src/core/state_store.py` | Ring buffer, EWMA, confidence, boolean | Temiz dict | Güncellenen state |
-| `src/analysis/threshold_checker.py` | Anlık değer vs config limiti | Sensör değeri + limits | ThresholdSignal |
-| `src/analysis/trend_detector.py` | Doğrusal regresyon, ETA tahmini | Ring buffer + limit | TrendSignal |
-| `src/analysis/risk_scorer.py` | Kural Tabanlı sinyaller | İki signal + confidence | RiskEvent (0-100) |
-| `pipeline/ml_predictor.py`| Pre-Fault Makine Öğrenimi Tahminleri | Window İstatistikleri | Model Prediction |
-| `src/analysis/nlg_engine.py`| SHAP'tan Doğal Dile Açıklama Üretimi | SHAP Values | Natural Language |
-| `src/alerts/alert_engine.py` | Throttle, XAI çeviri, DB kaydı, terminal | RiskEvent + ML | Ekran çıktısı |
-| `config/limits_config.yaml` | Min/max değerleri, tüm parametreler | — | Config dict |
-| **`scripts/data_tools/context_collector.py`** | **🆕 Zengin Context Toplama** | **Sensör değerleri + startup_ts** | **`rich_context_windows.json`** |
+| Modül | Konum | Görevi |
+|-------|-------|--------|
+| **hpr_monitor.py** | `src/app/` | Ana uygulama — tüm katmanları birbirine bağlar |
+| **data_validator.py** | `src/core/` | Katman 0 — ham veriyi temizler |
+| **state_store.py** | `src/core/` | Katman 1 — ring buffer, EWMA, disk checkpoint |
+| **kafka_consumer.py** | `src/core/` | Genel amaçlı Kafka tüketicisi (tüm makine tipleri) |
+| **threshold_checker.py** | `src/analysis/` | Anlık limit kontrolü |
+| **trend_detector.py** | `src/analysis/` | Lineer regresyon + ETA hesabı |
+| **risk_scorer.py** | `src/analysis/` | Ensemble risk puanı (0-100) |
+| **nlg_engine.py** | `src/analysis/` | SHAP değerlerini Türkçeye çevirir |
+| **dlime_explainer.py** | `src/analysis/` | SHAP çökünce devreye giren yedek açıklayıcı |
+| **alert_engine.py** | `src/alerts/` | Throttle, formatlama, terminale basma |
+| **ml_predictor.py** | `pipeline/` | ML modeli yükler ve tahmin üretir |
+| **context_builder.py** | `pipeline/` | Alarm bağlamını Gemini için paketler |
+| **llm_engine.py** | `pipeline/` | Gemini API — AI Usta Başı analizi |
+| **window_collector.py** | `scripts/data_tools/` | Basit veri penceresi kaydeder |
+| **context_collector.py** | `scripts/data_tools/` | ±30 dk zengin bağlam penceresi kaydeder |
+| **sync_limits_from_db.py** | `scripts/data_tools/` | IK DB → limits_config.yaml senkronizasyonu |
+| **kafka_env.py** | `scripts/` | Tüm scriptler için ortak Kafka bağlantı ayarları |
+| **train_model.py** | `scripts/ml_tools/` | ML modelini eğitir |
+| **shap_analyzer.py** | `scripts/ml_tools/` | SHAP analizi ve görselleştirme |
 
-### 🆕 Yeni Modül: Context Collector (Faz 2)
+---
 
-**Konum:** [`scripts/data_tools/context_collector.py`](../scripts/data_tools/context_collector.py)
+## Konfigürasyon Dosyaları
 
-**Amaç:** Gerçek bağlam-aware AI için **zengin zaman penceresi** toplamak.
+| Dosya | İçeriği | Değiştirme Yöntemi |
+|-------|---------|-------------------|
+| `config/limits_config.yaml` | Makine limitleri, EWMA, pipeline parametreleri | `sync_limits_from_db.py` veya elle |
+| `docs/causal_rules.json` | Fizik tabanlı bağlam kuralları | Elle — bakım müh. girdisiyle |
+| `.env` | API key, Kafka IP (git'e girmiyor) | Elle — `.env.example`'dan kopyala |
+| `pipeline/model/model.pkl` | Eğitilmiş ML modeli | `train_model.py` çalıştırınca güncellenir |
 
-**Özellikler:**
-- **±30dk zaman penceresi:** Pre-fault (30dk) + Fault anı + Post-fault (10dk)
-- **Cold start filtresi:** Operating minutes < 60 dk olanları ignore et
-- **Korelasyon analizi:** Sensörler arası ilişkileri hesapla
-- **Otomatik etiketleme:** Limit aşımı + cold start değil = VALID FAULT
+---
 
-**Entegrasyon:**
-```python
-# src/app/hpr_monitor.py içinde
-from scripts.data_tools import context_collector as rich_collector
+## Makine Envanteri
 
-# Her mesajda çağrılır
-rich_collector.record(machine_id, sensor_values, startup_ts)
+| Tip | Prefix | Violation Sensörü | Notlar |
+|-----|--------|-------------------|--------|
+| Dikey Pres | HPR001,003,004,005 | 6 sayısal + 16 boolean | Tam donanımlı |
+| Yatay Pres | HPR002,006 | 2 sayısal | Sadece basınç + hız |
+| Testere | TST001-004 | 4 sayısal | Saw speed, torque, current, cut time |
+| Endüksiyon | IND | Yok | Sadece trend izleniyor |
+| Robot | RBT | Yok | Sadece trend izleniyor |
+| CNC | CNC | Yok | Sadece trend izleniyor |
+
+**Not:** `horitzonal_infeed_speed` sensörü kasıtlı yazım hatasıyla var — PLC de bu ismi kullanıyor, değiştirme.
+
+---
+
+## Veri Depolama
+
+| Dosya | Ne Kadar Büyür | Ne Zaman Silinir |
+|-------|----------------|------------------|
+| `state.json` | ~1-2 MB sabit | Silme — sistem hafızası |
+| `live_windows.json` | Yavaş büyür | Eğitimden sonra arşivlenebilir |
+| `rich_context_windows.json` | 30 günde ~50-75 MB | ML eğitimi sonrası arşivle |
+| `logs/` | Günlük rotasyon | 7 gün sonra silinebilir |
+
+---
+
+## Alarm Mantığı
+
+```
+Kafka mesajı geldi
+       │
+       ├─ Threshold aşıldı? → FAULT alarm (güven %100, IK limiti)
+       │
+       ├─ Trend > 0 ve güçlü? → TREND uyarısı (ETA: X dakika)
+       │
+       ├─ ML anomali > %50? → PRE_FAULT_WARNING (olasılıksal)
+       │
+       └─ Physics kuralı tetiklendi? → Risk skoru +bonus
+              │
+              └─ Toplam skor > 20 → Alert engine'e gönder
+                        │
+                        └─ Throttle geçtiyse → Terminale bas
+                                  │
+                                  └─ Alarm sonrası → Gemini analizi (arka planda)
 ```
 
-**Çıktı:** `rich_context_windows.json` — ML eğitimi için zengin bağlam verisi.
-
-**Strateji:** Detaylar için [`docs/data_collection_strategy.md`](data_collection_strategy.md)
-
 ---
 
-## Makine Envanteri ve Hedef Segmenti (3 Mart Kontrolü)
+## Dayanıklılık
 
-Sistem Kafka verilerine göre HPR (Hidrolik Pres), IND (Endüksiyon), TST (Testere) ve RBT (Robot) makinelerini tarar. Arızaya en yatkın olan ve üzerinde veri zenginliği yakalanan 3 pilot makine üzerine inşa edilmiştir: **HPR001**, **HPR003**, **HPR005**.
+Sistem her katmanda bağımsız çalışabilir:
 
-Sensörler ana hatlarıyla şöyledir:
-- *Yağ tankı sıcaklığı, ana hidrolik devresi basıncı, yatay/dikey besleme hızı*
-
----
-
-*Detaylı kod akışı ve algoritma açıklamaları için yukarıdaki `pipeline_detay_katman[N].md` dosyalarına başvurunuz.*
+- ML modeli yoksa → Threshold + Trend yeterli
+- Gemini API key yoksa → NLG template açıklaması yeterli
+- SHAP başarısız olursa → DLIME devreye girer
+- Kafka bağlantısı kopunca → Son state.json'dan devam eder
+- Elektrik kesilirse → 5 dk'lık checkpoint kaybı, geri kalanı kurtarılır

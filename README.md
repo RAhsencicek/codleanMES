@@ -1,206 +1,141 @@
-<div align="center">
+# Codlean MES — Fabrika Arıza Tahmin Sistemi
 
-# 🔥 CODLEAN MES 
-### The Intelligent Nervous System for Manufacturing Execution
-
-*Kusursuz Üretim İçin Kendi Kendini Dinleyen Yapay Zeka*
-
-[![Python](https://img.shields.io/badge/Python-3.14-blue.svg)](https://www.python.org/)
-[![Status](https://img.shields.io/badge/Status-Pilot_Phase-yellow.svg)]()
-[![System](https://img.shields.io/badge/Architecture-Hybrid_AI-orange.svg)]()
+> **Durum:** 🟡 Pilot Faz — Sistem canlıda, veri kampanyası devam ediyor
+> **Son güncelleme:** 2026-03-24
 
 ---
 
-**Endüstriyel üretim hatları devasa, gürültülü ve karmaşıktır.**
-Geleneksel OEE panelleri size sadece makinenin "bozulduğunu" veya "durduğunu" söyler — yani iş işten geçtikten sonra müdahale edersiniz.
+## Ne Yapar?
 
-**Codlean MES**, makine sensörlerinden (Basınç, Yağ Sıcaklığı, Titreşim, Tork vb.) saniyede fırlayan devasa verinin içine dalarak **"Yapay Zeka Destekli Bir Zaman Makinesi"** gibi çalışır. Sadece mevcut durumu göstermekle kalmaz; makinenin geçmişini ezberler, şimdisini denetler ve gelecekte ne zaman, hangi parçanın arıza vereceğini saniyeler öncesinden hesaplar.
+Fabrikadaki hidrolik pres makinelerinin (HPR) sensör verilerini Kafka üzerinden gerçek zamanlı okur. Anlık limit aşımlarını, yavaş tırmanan tehlikeli trendleri ve fizik tabanlı bileşik anomalileri tespit eder. Arıza olmadan önce teknisyene Türkçe, somut, aksiyona dönüştürülebilir bir uyarı verir.
 
-</div>
-
-<br>
-
-## 🚦 Sistem Durumu (Gerçek Zamanlı)
-
-| Bileşen | Durum | Açıklama | Son Güncelleme |
-|---------|-------|----------|----------------|
-| **Rule-Based Alert** | ✅ Canlı | Katı eşik sınırları aktif | 2026-03-18 |
-| **ML Pre-Fault** | 🔬 Beta | XGBoost — Test F1=0.48 (veri birikince yeniden eğitilecek) | 2026-03-06 |
-| **SHAP XAI** | ✅ Entegre | Lazy evaluation: Risk > %50'de çalışır (~100ms) | 2026-03-18 |
-| **NLG Motor** | ✅ Canlı | Türkçe açıklamalar üretiliyor | 2026-03-18 |
-| **DLIME Fallback** | ✅ Sigorta | XGBoost dışı modeller için backup | 2026-03-18 |
-| **Physics-Informed (Faz 1.5)** | ✅ Tamamlandı | Operating Minutes + Hydraulic Strain | 2026-03-17 |
-| **AI Usta Başı (Context)** | ✅ Tamamlandı | Causal JSON kuralları (Neo4j iptal) | 2026-03-17 |
-| **Data Collection** | ✅ Otomatize | `hpr_monitor.py` içinde entegre | 2026-03-17 |
-| **🆕 Rich Context Collector** | 🟢 **Aktif** | ±30dk zaman penceresi, sebep-sonuç analizi | 2026-03-18 |
-
-### 🎯 Aktif Veri Kampanyası: 30-Gün Plan (18 Mart - 17 Nisan 2026)
-
-**Hedef:** Gerçek bağlam-aware AI için yeterli ve kaliteli veri toplamak.
-
-| Aşama | Tarih | Hedef | Durum |
-|-------|-------|-------|-------|
-| **Veri Toplama** | 18 Mart - 17 Nisan | ~1,500 valid FAULT context | 🟢 Devam ediyor |
-| **Veri Temizliği** | 17-22 Nisan | Feature engineering | ⏳ Beklemede |
-| **Model Eğitimi** | 22-27 Nisan | TreeSHAP + DLIME + NLG | ⏳ Beklemede |
-| **Production** | 27 Nisan+ | Gerçek zamanlı AI | ⏳ Beklemede |
-
-**Yeni Modül:** [`scripts/data_tools/context_collector.py`](scripts/data_tools/context_collector.py) - Her FAULT'ta ±30dk zengin bağlam toplar.
-
-**Çıktı:** `rich_context_windows.json` - Pre-fault trend, korelasyonlar, cold start etiketleri.
+```
+Fabrika PLC → Kafka → [Temizle → Hafızala → Analiz Et → Bağlam Kur → Alarm Ver] → Teknisyen
+```
 
 ---
 
-## 🚀 Hızlı Başlangıç (Quick Start)
-
-Yeni bir geliştirici olarak projeyi derhal ayağa kaldırmak için:
+## Hızlı Başlangıç
 
 ```bash
-# 1. Depoyu klonladıktan veya indirdikten sonra proje dizinine geçin:
-cd kafka
-
-# 2. Virtual Environment oluşturun ve aktif edin:
+# 1. Ortamı kur
 python3 -m venv venv
 source venv/bin/activate
-
-# 3. Bağımlılıkları kurun (SHAP ve matplotlib dahil):
 pip install -r requirements.txt
 
-# 4. Yapılandırma Dosyası
-# Not: limits_config.yaml dosyası config/limits_config.yaml'e sembolik linktir.
-# Ana yapılandırma config/limits_config.yaml içindedir.
+# 2. Ortam değişkenlerini ayarla
+cp .env.example .env
+# .env içine KAFKA_BOOTSTRAP_SERVERS ve GEMINI_API_KEY ekle
 
-# 5. Veri Toplama Otomatiktir
-# hpr_monitor.py başlatıldığında otomatik olarak Kafka'dan veri toplar
-# Ayrı bir servis başlatmaya gerek yok
-
-# 6. HPR (Hidrolik Pres) Canlı İzleme Terminalini (App) Başlatın:
+# 3. Çalıştır
 PYTHONPATH=. python3 src/app/hpr_monitor.py
 ```
 
-Makine izleme ve uyarı dökümünü terminalden göreceksiniz. Arıza modellerinin tahminini `data/ml_training_data.csv` oluşturucusundan takip edebilirsiniz.
+---
+
+## Sistem Bileşenleri
+
+| Bileşen | Durum | Açıklama |
+|---------|-------|----------|
+| Threshold alarmları | ✅ Çalışıyor | IK veritabanı limitleriyle anlık eşik kontrolü |
+| Trend tespiti + ETA | ✅ Çalışıyor | Lineer regresyon, R²≥0.70, limite kalan dakika |
+| Physics kuralları | ✅ Çalışıyor | Termal stres, hidrolik zorlanma, soğuk makine |
+| ML modeli | ✅ Yüklü, beta | XGBoost — F1=0.48 (veri birikince yeniden eğitilecek) |
+| SHAP + DLIME + NLG | ✅ Çalışıyor | Açıklanabilir AI, Türkçe analiz metni |
+| AI Usta Başı (Gemini) | ✅ API key ile | Alarm sonrası bağlam analizi |
+| Veri toplama | ✅ Çalışıyor | window_collector + context_collector aktif |
+| Dashboard | ✅ Çalışıyor | 2×3 HPR grid, renkli terminal UI |
 
 ---
 
-## 📸 Canlı İzleme Terminali (Dashboard)
+## Dokümanlar
 
-Codlean, veri karmaşasını şık, modern, göz yormayan ve "renklerle konuşan" dinamik bir arayüze dönüştürür. Sayı kalabalığı değil, renkli **eylem çağrıları** (Call-to-Action) sunar.
+| Doküman | İçerik |
+|---------|--------|
+| `docs/TODO_VE_TEKNIK_BORC.md` | Proje durumu, yapılacaklar, bilinen sorunlar |
+| `docs/MIMARI.md` | Sistem mimarisi ve veri akışı |
+| `docs/pipeline_detay_katman0.md` | Veri doğrulama katmanı |
+| `docs/pipeline_detay_katman1.md` | State store ve hafıza yönetimi |
+| `docs/pipeline_detay_katman2.md` | Analiz motoru, ML, AI Usta Başı |
+| `docs/pipeline_detay_katman3.md` | Alert engine ve alarm formatları |
+| `docs/causal_rules.json` | Fizik tabanlı bağlam kuralları |
 
-<div align="center">
-  <img src="docs/images/dashboard-preview.png" alt="Codlean MES Dashboard" width="100%">
-  <br>
-  <i>Şekil 1: Canlı Arıza Tahmin Arayüzü (Hybrid AI Modu)</i>
-</div>
+---
 
-### 🧩 Dashboard Neyi Anlatıyor? (Modül Açıklamaları)
+## Proje Yapısı
 
-Arayüzümüz, teknisyenin bilişsel yükünü (cognitive load) sıfıra indirmek için özel tasarlandı:
-- **Ana Sensör Barları (Sol Üst):** Makinenin anlık Basınç, Yağ Sıcaklığı ve Titreşim değerlerini gösterir. Yeşil renk optimum seviyeyi, sarı limitlere yaklaşmayı, kırmızı ise tehlikeyi belirtir.
-- **🤖 AI-Analiz Metni (Ortadaki Beyaz Metin):** Sistemin karar motorudur. Sensörler yeşil bile olsa, yapay zeka arka planda mikroskobik bir ivmelenme görüyorsa burada teknisyeni insan diliyle doğrudan uyarır: *"Valf sınır değerlere yaklaşıyor, makineyi rölantiye alın."*
-- **Risk Durumu & Skoru (0-100):** Tüm sensör parametrelerinin ve yapay zeka tahminlerinin (Ensemble) tek bir skora indirgenmiş halidir. Skor %85'i geçerse sistem otomatik olarak alarm üretir.
-- **ETA (Estimated Time of Arrival):** Yapay zekanın "Eğer bu ivme böyle devam ederse X dakika sonra makine kesin arıza verecek" diyerek hesapladığı geri sayım sayacıdır.
-- **Olay Akışı Paneli (En Alt):** Fabrikadaki tüm makinelerdeki "Yapay Zeka Uyarılarını" ve "Olayları" (Örn: Zaman makinesi simülasyonu başlıyor) kronolojik bir log ekranı gibi teknisyenin önüne serer.
-
-Göz alıcı arayüzü terminalinizde canlı olarak test etmek için:
-```bash
-# Zaman Makinesi (Historical Replay) simülasyonunu başlatın:
-# Not: dashboard_pro.py bağımsız bir simülasyon aracıdır.
-# Gerçek zamanlı izleme için hpr_monitor.py'yi kullanın.
-PYTHONPATH=. python src/ui/dashboard_pro.py
+```
+kafka/
+├── src/
+│   ├── app/
+│   │   └── hpr_monitor.py          ← Ana uygulama
+│   ├── core/
+│   │   ├── data_validator.py       ← Katman 0: Veri temizleme
+│   │   └── state_store.py          ← Katman 1: Ring buffer, EWMA
+│   ├── analysis/
+│   │   ├── threshold_checker.py    ← Anlık limit kontrolü
+│   │   ├── trend_detector.py       ← Lineer regresyon + ETA
+│   │   ├── risk_scorer.py          ← Ensemble risk skoru
+│   │   ├── nlg_engine.py           ← Türkçe açıklama üretici
+│   │   └── dlime_explainer.py      ← SHAP yedek açıklayıcı
+│   └── alerts/
+│       └── alert_engine.py         ← Throttle + terminal çıktısı
+├── pipeline/
+│   ├── ml_predictor.py             ← ML model tahmin motoru
+│   ├── context_builder.py          ← Gemini bağlam paketleyici
+│   ├── llm_engine.py               ← AI Usta Başı (Gemini)
+│   └── model/
+│       ├── model.pkl               ← Eğitilmiş model
+│       └── feature_names.json      ← Özellik listesi
+├── scripts/
+│   ├── kafka_env.py                ← Ortak Kafka bağlantı ayarları
+│   ├── ml_tools/
+│   │   ├── train_model.py          ← Model eğitimi
+│   │   └── shap_analyzer.py        ← SHAP analizi
+│   └── data_tools/
+│       ├── window_collector.py     ← Basit veri penceresi
+│       ├── context_collector.py    ← Zengin bağlam penceresi
+│       └── sync_limits_from_db.py  ← IK DB → limits_config senkronizasyonu
+├── config/
+│   └── limits_config.yaml          ← Makine limitleri ve sistem ayarları
+├── docs/                           ← Dokümantasyon
+├── .env.example                    ← Ortam değişkenleri şablonu
+└── requirements.txt
 ```
 
 ---
 
-## 🏗️ 4-Katmanlı Yapay Zeka Pipeline Mimarisi
+## Ortam Değişkenleri
 
-Sistemimiz sıradan bir veri okuyucu değildir. Makineden fırlayan anlık, gürültülü (noisy) bir titreşim verisinin teknisyenin ekranına "anlamlı bir öneri" olarak düşmesi süreci sanatsal bir endüstri mühendisliği gerektirir. 
-
-<div align="center">
-  <img src="docs/images/Gemini_Generated_Image_4ztegx4ztegx4zte.png" alt="Codlean MES Architecture" width="100%">
-  <br>
-  <i>Şekil 2: 4-Katmanlı Hibrit Yapay Zeka Fabrikasyon Mimarisi</i>
-</div>
-
-Pipeline mimarimiz, Kafka'dan ham veriyi okuyup teknisyene anlamlı bir uyarı üretene kadar dört ana katmandan (+1 Bağlam Katmanı) geçirir. Her katman bir öncekinden temizlenmiş ve zenginleştirilmiş veri alır.
-
-> 📚 **Detaylı mimari için:** [`docs/pipeline_mimarisi.md`](docs/pipeline_mimarisi.md)
-> 
-> 📚 **Katman detayları için:** [`docs/pipeline_detay_katman0.md`](docs/pipeline_detay_katman0.md) → [`katman3.md`](docs/pipeline_detay_katman3.md)
-
-### 🟢 KATMAN 0: Ağ Geçidi & Güvenlik Görevlisi (Gateway Layer)
-Bu katman **güvenlik görevlisi** gibi davranır. Sensörlerden fırlayan devasa Kafka verisi ana sisteme ulaşmaya çalışırken filtrelenir. Eğer veri bozuksa yapay zeka yanlış kararlar alabilir, bu nedenle katı kurallar uygulanır:
-- **Format ও Dil Bilgisi Kontrolü:** Kimi makine ondalık sayıları virgülle (`37,02`) kimi noktayla (`37.02`) gönderir. Sistem anında bunları standartlaştırır.
-- **Kopuk Sensör Reddi:** Makine kapalıysa gelen `UNAVAILABLE` stringini engeller, programın çökmesini (Crash) önler.
-- **Bayat Veri (Stale Data) Engeli:** Ağ pingi gecikirse 5 dakika geç gelen paketler zaman çizelgesini bozmamak adına trend hesaplarına katılmaz.
-- **Spike Filtresi:** Elektrik sıçramaları gibi 5 standart sapmalık (*5-sigma*) anlık voltaj pikleri silinir ki ML modelleri bunu gerçek bir "arıza" sanmasın.
-
-### 🟡 KATMAN 1: Kısa Süreli Hafıza Merkezi (State Store)
-Yapay Zeka izole 1 saniyelik değerlere bakarak karar veremez. "Şu an sıcaklık 60 derece" demek tek başına anlamsızdır. Dün nasıldı?
-- **Ring Buffer (Kayan Pencere):** Tüm makine sensörlerinin son 12 saatteki (veya son 720 kayıt) ölçümlerini RAM üzerinde (anlık bellekte) milisaniyeler içinde saklar ve ezberler.
-- **Hareketli Ortalama (EWMA):** Zaman serilerindeki anlık gürültüleri filtreleyip eylemsizlik trendini hesaplar. Sıcaklığın "yönünü" bulur.
-- **Disk Koruması (State Persistence):** Fabrikada elektrik kesilip sistem aniden kapansa dahi `state.json` üzerinden tüm hafızasını (son 12 saatlik geçmişi) saniyede geri yükler. Uçak kara kutusu gibi çalışır.
-
-### 🔴 KATMAN 2: Karar Motoru & Hibrit Zeka (AI Engine)
-Uygulamanın ana beynidir. İki bağımsız otonom sistemi (İnsan Aklı ve Makine Öğrenimi) tek potada (Ensemble) eritir:
-- **Kural Tabanlı Threshold (%100 Kesinlik):** Basınç 150 Bar sınırını aştı ise bu teknisyen onaylı "kesin" bir arızadır. Şansa veya makine öğrenimi tahminine bırakılmaz; sistem derhal en yüksek perdeden müdahale emri verir.
-- **Makine Öğrenimi (ML Predictor - Random Forest/XGBoost):** Değerler henüz 120 Bar gibi normal sınırlardadır. Ancak model; Tork, Titreşim ve Sıcaklık parametrelerindeki eş zamanlı ufak dalgalanmaları ve kimsenin göremediği "mikro ivmelenmeleri" saptayarak: *"Mevcut ivme korunursa ana valf 45 dakika içinde arızaya geçecek"* (Pre-Fault) öngörüsünü üretir.
-- **Ensemble Risk Scorer:** İki sistemin çıktılarını (Kesin Kural ve YZ Tahmini) ağırlıklandırarak harmanlar ve 0-100 arasında net bir risk skoru basar.
-
-### 🧠 [YENİ] KATMAN 2.5: Bağlam Motoru & Nedensellik (AI Usta Başı)
-Sadece min/max limitlerini izleyen alarm sistemini **makineler arası "neden-sonuç" ilişkilerini (bağlam/context) açıklayan** canlı bir asistana dönüştüren merkezdir.
-- **Kök Neden Analizi:** "Ana basınç son 2 saattir yüksek seyrettiği için yağ sıcaklığı arttı ve termal strese yol açtı" gibi açıklanabilir (Explainable AI) bağlamlar kurar.
-- **Dinamik Kural & ML Entegrasyonu:** Hibrit yaklaşımla beslenir; hem usta sezgilerini yansıtan "Bağlam Sözlüğü" kurallarını barındırır, hem de "Termal Stres", "Valf Kaçağı" gibi olay paketleriyle eğitilmiş (Labeling) özel makine öğrenimi mantıklarını içerir.
-
-### 🟢 KATMAN 3: İletişim & Alert Engine
-Teknisyene giden son kapıdır. Bu katman "Açıklanabilir Yapay Zeka" (XAI) ilkesini benimser.
-- **Alarm Boğma (Throttle):** "Teknoloji Yorgunluğunu (Alert Fatigue)" engellemek adına aynı makine için saniyede 10 kez alarm üretip insanları paniğe sokmak yerine; 30 dakikalık periyotlarla tok ve net uyarılar geçer.
-- **Actionable AI (Eyleme Dönüştürülebilir Çıktı):** Ekrana `Hata Kodu 404` veya `Skor %84` şeklinde anlamsız çıktılar basmaz. Doğrudan: 
-  > 🚨 *AI Usta Başı Yorumu: Makine son 2 saattir basınçtan sınırda çalışıyor. Bu durum yağ sıcaklığını tetikledi. Geçmişteki benzer kalıplara göre 45 dk içinde valf kaçağı riski (Termal Stres) var. Rölantiye alın.* 
-şeklinde insan dilinde direktif verir.
+| Değişken | Varsayılan | Açıklama |
+|----------|-----------|----------|
+| `KAFKA_BOOTSTRAP_SERVERS` | `10.71.120.10:7001` | Kafka broker adresi |
+| `KAFKA_TOPIC` | `mqtt-topic-v2` | Topic adı |
+| `GEMINI_API_KEY` | — | AI Usta Başı için zorunlu |
+| `CONFIG_PATH` | `config/limits_config.yaml` | Config dosyası yolu |
 
 ---
 
-## ⚡ Sistemi Benzersiz Kılan Özellikler
+## IK Veritabanından Limit Güncelleme
 
-- **Maliyet-Farkındalıklı (Cost-Aware) Tahminleme:** Makinelerin plansız duruş maliyeti, onarım maliyetinden katbekat yüksektir. Algoritma **Recall** (Duyarlılık) oranını maksimize eder; asgari bir şüphede dahi teknik ekibi tetikler, "Yanlış Alarm olsa bile" hiçbir gerçek arıza potansiyeli şansa bırakılmaz.
-- **Kayıpsız Zaman Makinesi (Historical Replay Engine):** Fabrika lokal ağ bağlantısını veya Kafka erişimini kaybetse dahi, sistem kendi içindeki *Event Loop* motoru sayesinde gigabytelarca geçmiş *violation_log.json* verisini saniye saniye işleyerek sahte olmayan, kanıtlanmış bir test & simülasyon altyapısı sunar.
+IK yeni CSV gönderince:
 
----
+```bash
+python3 scripts/data_tools/sync_limits_from_db.py \
+  --typefile /path/to/machinetypedataitems.csv \
+  --machinefile /path/to/machinedataitems.csv \
+  --machines HPR001,HPR003,HPR004,HPR005 \
+  --tst-machines TST001,TST002,TST003,TST004 \
+  --dry-run
+```
 
----
-
-## 🔄 Geliştirme Checkpoint'leri
-
-Bu bölüm, sistemin evrimini adım adım takip etmek için tutulur. Her checkpoint, yapılan değişikliklerin nedenini ve sonuçlarını açıklar.
-
-### ✅ Checkpoint 2026-03-18: Production Stabilizasyonu
-
-**Yapılanlar:**
-- **Config Güvenliği:** IP adresi ve topic bilgileri environment variable'a taşındı. Artık `KAFKA_BOOTSTRAP_SERVERS` ve `KAFKA_TOPIC` ile dışarıdan konfigüre edilebilir.
-- **Path Düzeltmesi:** Göreceli path yerine absolute path kullanılıyor. Farklı dizinden çalıştırma hataları önlendi.
-- **Kafka Offset Yönetimi:** `group.id` sabitlendi (`hpr-monitor-prod`) ve `enable.auto.commit: True` yapıldı. Restart sonrası veri kaybı önlendi.
-- **Physics Rules Aktivasyonu:** `machine_limits` parametresi `calculate_risk()` fonksiyonuna eklendi. Hidrolik zorlanma kuralları devreye girdi.
-- **Zamana Dayalı Risk Decay:** Risk skoru artık mesaj frekansından bağımsız. GC pause koruması ve stale timestamp temizliği eklendi.
-- **ML Pre-Fault Entegrasyonu:** `generate_hybrid_alert()` canlı pipeline'a bağlandı. Dashboard'da [KURAL] ve [ML] ayrımı görünüyor.
-
-**Neden Yapıldı:**
-Dışarıdan gelen kod review'da 8 kritik sorun (P0/P1) tespit edildi. Bu sorunlar production ortamında veri kaybı, yanlış tahmin ve sistem çökmesine yol açabilirdi.
-
-**Sonuç:**
-- Production readiness: ~40% → ~85%
-- Sistem artık 4-katmanlı Hybrid AI olarak tam kapasite çalışıyor
-- Kalan 2 teknik borç (P0-1 Feature Leakage, P0-2 Temporal Leakage) veri birikince çözülecek
-
-**İlgili Dosyalar:** `src/app/hpr_monitor.py`, `config/limits_config.yaml`
+HPR002 ve HPR006 Yatay Pres tipinde — bunları ayrıca kontrol et.
 
 ---
 
-## ⚙️ Geliştirici Kaynakları
+## Önemli Notlar
 
-Daha derinlemesine teknik detaylar, sınıf yapıları ve kod analizleri için modüler Dokümantasyon setimizi inceleyebilirsiniz:
-- 📖 [Mimarî Genel Bakış](./docs/pipeline_mimarisi.md)
-- 📖 [Katman 0: Veri Doğrulama](./docs/pipeline_detay_katman0.md)
-- 📖 [Katman 1: State Store](./docs/pipeline_detay_katman1.md)
-- 📖 [Katman 2: Analiz Motoru ve AI Usta Başı](./docs/pipeline_detay_katman2.md)
-- 📖 [Katman 3: Alert Engine](./docs/pipeline_detay_katman3.md)
-- 🛠️ [ML Geliştirici Dokümantasyonu (PROJECT_DETAILS.md)](./PROJECT_DETAILS.md)
+- `horitzonal_infeed_speed` yazımı kasıtlıdır — PLC cihazı bu ismi kullanıyor, değiştirme.
+- `state.json` dosyasını silme — sistemin 2 saatlik hafızası burada.
+- `GEMINI_API_KEY` yoksa AI Usta Başı sessizce devre dışı kalır, sistem çalışmaya devam eder.
+- Sistem her katmanda bağımsız çalışır: ML yoksa threshold+trend, Gemini yoksa NLG template yeterli.

@@ -1,40 +1,15 @@
 {
   "feature_names": [
-    "oil_tank_temperature__fault_count",
-    "oil_tank_temperature__value_mean",
-    "oil_tank_temperature__value_std",
-    "oil_tank_temperature__value_max",
-    "oil_tank_temperature__over_ratio",
     "main_pressure__fault_count",
     "main_pressure__value_mean",
-    "main_pressure__value_std",
     "main_pressure__value_max",
     "main_pressure__over_ratio",
     "horizontal_press_pressure__fault_count",
     "horizontal_press_pressure__value_mean",
-    "horizontal_press_pressure__value_std",
     "horizontal_press_pressure__value_max",
-    "horizontal_press_pressure__over_ratio",
-    "lower_ejector_pressure__fault_count",
-    "lower_ejector_pressure__value_mean",
-    "lower_ejector_pressure__value_std",
-    "lower_ejector_pressure__value_max",
-    "lower_ejector_pressure__over_ratio",
-    "horitzonal_infeed_speed__fault_count",
-    "horitzonal_infeed_speed__value_mean",
-    "horitzonal_infeed_speed__value_std",
-    "horitzonal_infeed_speed__value_max",
-    "horitzonal_infeed_speed__over_ratio",
-    "vertical_infeed_speed__fault_count",
-    "vertical_infeed_speed__value_mean",
-    "vertical_infeed_speed__value_std",
-    "vertical_infeed_speed__value_max",
-    "vertical_infeed_speed__over_ratio",
-    "active_sensors",
-    "multi_sensor_fault",
-    "total_faults_window"
+    "horizontal_press_pressure__over_ratio"
   ],
-  "n_features": 33,
+  "n_features": 8,
   "sensors": [
     "oil_tank_temperature",
     "main_pressure",
@@ -45,6 +20,6 @@
   ],
   "pre_fault_mins": 60,
   "time_window_min": 10,
-  "model_name": "RandomForest",
-  "generated_at": "2026-03-06T15:35:19.994874"
+  "model_name": "XGBoost",
+  "generated_at": "2026-03-23T17:56:09.883899"
 }

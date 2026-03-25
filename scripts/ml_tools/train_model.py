@@ -51,7 +51,7 @@ except ImportError:
     print("ℹ️  LightGBM yok (opsiyonel). Yüklemek: pip3 install lightgbm")
 
 # ─── Sabitler ────────────────────────────────────────────────────────────────
-VIOLATION_LOG    = "violation_log.json"
+VIOLATION_LOG    = "data/violation_log.json"
 LIVE_WINDOWS     = "live_windows.json"   # hpr_monitor.py'nin window_collector'ı yazar
 MODEL_DIR        = "pipeline/model"
 PRE_FAULT_MINS   = 60     # FAULT'tan kaç dk önce PRE-FAULT sayılır
@@ -267,9 +267,6 @@ def engineer_features(fault_df: pd.DataFrame,
                     row[f"{sensor}__over_ratio"]  = sdata["value"].mean() / lim if lim > 0 else 0.0
                     active_sensors += 1
 
-            row["active_sensors"]      = active_sensors
-            row["multi_sensor_fault"]  = 1 if active_sensors >= 2 else 0
-            row["total_faults_window"] = len(window)
             rows.append(row)
             t_cur = t_next
 
@@ -317,9 +314,6 @@ def engineer_features(fault_df: pd.DataFrame,
                         row[f"{sensor}__value_max"]   = sdata["value"].max()
                         row[f"{sensor}__over_ratio"]  = sdata["value"].mean() / lim if lim > 0 else 0.0
 
-                row["active_sensors"]      = 0
-                row["multi_sensor_fault"]  = 0
-                row["total_faults_window"] = 0
                 rows.append(row)
                 t_cur = t_next
     else:
@@ -331,6 +325,17 @@ def engineer_features(fault_df: pd.DataFrame,
         log.error("❌ Özellik matrisi boş!"); sys.exit(1)
 
     feat_df.fillna(0, inplace=True)
+
+    # Near-constant sütunları düşür (>%97 sıfır → model için bilgisiz)
+    meta_cols = {"machine_id", "window_start", "_source"}
+    drop_zero = [
+        c for c in feat_df.columns
+        if c not in meta_cols
+        and (feat_df[c] == 0).mean() > 0.97
+    ]
+    if drop_zero:
+        feat_df.drop(columns=drop_zero, inplace=True)
+        log.info("   Near-constant sütunlar çıkarıldı (%d): %s", len(drop_zero), drop_zero)
 
     fault_rows  = (feat_df["_source"] == "fault").sum()  if "_source" in feat_df.columns else len(feat_df)
     normal_rows = (feat_df["_source"] == "normal").sum() if "_source" in feat_df.columns else 0
@@ -712,8 +717,9 @@ def train_and_evaluate(feat_df: pd.DataFrame) -> dict:
             eval_metric="logloss", early_stopping_rounds=30,
             random_state=42, verbosity=0)
         xgb_m.fit(X_tr_final, y_tr_final, eval_set=[(X_val, y_val)], verbose=False)
-        _eval_with_threshold("XGBoost", xgb_m, X_test, y_test, feature_cols, 
-                            results, threshold=final_threshold)
+        xgb_threshold = _tune_threshold(xgb_m, X_val, y_val, "XGBoost")
+        _eval_with_threshold("XGBoost", xgb_m, X_test, y_test, feature_cols,
+                            results, threshold=xgb_threshold)
 
     if LGBM_OK:
         log.info("\n   🚀 LightGBM eğitiliyor...")
@@ -722,8 +728,9 @@ def train_and_evaluate(feat_df: pd.DataFrame) -> dict:
             num_leaves=63, subsample=0.8, colsample_bytree=0.8,
             class_weight=cw_dict, random_state=42)
         lgb_m.fit(X_tr_final, y_tr_final)
-        _eval_with_threshold("LightGBM", lgb_m, X_test, y_test, feature_cols, 
-                            results, threshold=final_threshold)
+        lgb_threshold = _tune_threshold(lgb_m, X_val, y_val, "LightGBM")
+        _eval_with_threshold("LightGBM", lgb_m, X_test, y_test, feature_cols,
+                            results, threshold=lgb_threshold)
 
     # ═══════════════════════════════════════════════════════════════════
     # EN İYİ MODELİ SEÇ VE KAYDET
@@ -736,7 +743,7 @@ def train_and_evaluate(feat_df: pd.DataFrame) -> dict:
     log.info("  ║  🏆 EN İYİ MODEL : %-14s ║", best_name)
     log.info("  ║     F1  Skoru    : %.4f             ║", best['f1'])
     log.info("  ║     AUC          : %.4f             ║", best['auc'])
-    log.info("  ║     Threshold    : %.2f               ║", final_threshold)
+    log.info("  ║     Threshold    : %.2f               ║", best['threshold'])
     log.info("  ║     CV F1        : %.4f ± %.4f       ║", mean_f1, std_f1)
     log.info("  ╚══════════════════════════════════════╝")
     
@@ -856,7 +863,20 @@ def _eval(name: str, model, X_te, y_te, feature_cols: list, results: dict):
                      "preds": preds, "proba": proba}
 
 
-def _eval_with_threshold(name: str, model, X_te, y_te, feature_cols: list, 
+def _tune_threshold(model, X_val, y_val, name: str) -> float:
+    """Her model için kendi validasyon olasılıklarıyla F1-optimal threshold bul."""
+    proba_val = model.predict_proba(X_val)[:, 1]
+    best_thr, best_f1 = 0.5, 0.0
+    for thr in np.arange(0.15, 0.65, 0.05):
+        preds = (proba_val > thr).astype(int)
+        f1 = f1_score(y_val, preds, zero_division=0)
+        if f1 > best_f1:
+            best_f1, best_thr = f1, float(thr)
+    log.info("   %s threshold (kendi val seti): %.2f (F1=%.4f)", name, best_thr, best_f1)
+    return best_thr
+
+
+def _eval_with_threshold(name: str, model, X_te, y_te, feature_cols: list,
                          results: dict, threshold: float = 0.5):
     """Modeli threshold ile değerlendir, results dict'e ekle."""
     proba = model.predict_proba(X_te)[:, 1]

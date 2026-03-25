@@ -1,6 +1,6 @@
 {
-  "version": "1.0",
-  "description": "Faz 1.5 - Physics-Informed Causal Rules (Neo4j yerine Hafif Siklet Bağlam Haritası)",
+  "version": "1.1",
+  "description": "Faz 1.5 - Physics-Informed Causal Rules. enriched_sensors ile uyumlu hale getirildi (2026-03-24).",
   "rules": {
     "thermal_stress": {
       "condition": {
@@ -14,8 +14,8 @@
     "hydraulic_strain": {
       "condition": {
         "main_pressure_ratio": "> 0.8",
-        "horizontal_infeed_speed": "< 0.2",
-        "vertical_infeed_speed": "< 0.2"
+        "horitzonal_infeed_speed_ratio": "< 0.2",
+        "vertical_infeed_speed_ratio": "< 0.2"
       },
       "risk_multiplier": 30.0,
       "explanation_tr": "Ana basınç tavan yapmasına rağmen hareket sensörleri tepki vermiyor (Hidrolik Zorlanma).",

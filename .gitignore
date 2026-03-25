@@ -9,3 +9,9 @@ live_windows.json
 .vscode/
 .idea/
 .DS_Store
+rich_context_windows.json
+
+# Ortam değişkenleri — API key ve iç ağ bilgileri burada
+# .env.example git'e gider (şablон), .env GİTMEZ (gerçek değerler)
+.env
+*.env
