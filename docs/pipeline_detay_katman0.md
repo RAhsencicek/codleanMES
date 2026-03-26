@@ -62,6 +62,8 @@ SPIKE_SIGMA          = 5.0
 MIN_SAMPLES_FOR_SPIKE = 15
 ```
 
+> **Not (2026-03-25 düzeltildi):** Bu filtre daha önce `ewma_state[machine_id][sensor]` yolunu arıyordu ama `state_store` yapısı `state[machine_id]["ewma_mean"][sensor]` şeklinde nested'dir. Bu uyumsuzluk nedeniyle spike filtresi hiç çalışmıyordu. `data_validator.py:319` doğru yapıya göre güncellendi.
+
 ### 6. Startup Maskesi
 
 Makine `IDLE/STOPPED → RUNNING` geçişi yaptığında ilk 60 dakika `is_startup=True` işaretlenir. Bu sürede trend hesabı yapılmaz. Neden? Soğuk başlatma sırasında yağ sıcaklığı, basınç, hız değerleri hızla değişir — bu normaldir, alarm üretmemeli.

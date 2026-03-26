@@ -168,7 +168,7 @@ ml_damp = ml_score_raw × max(confidence, 0.10)
 
 ### Physics-Informed Bonus
 
-`docs/causal_rules.json`'daki fizik kuralları değerlendirilir. `context_builder.py`'nin ürettiği `enriched_sensors` üzerinden çalışır:
+`docs/causal_rules.json`'daki fizik kuralları değerlendirilir. `risk_scorer.py` bu kuralları doğrudan ham `sensor_values` ve `machine_limits` üzerinden uygular (`context_builder.py`'nin `enriched_sensors`'u ile karıştırma — o sadece Gemini bağlamı içindir):
 
 | Kural | Koşul | Bonus |
 |-------|-------|-------|

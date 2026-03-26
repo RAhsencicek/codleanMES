@@ -64,34 +64,31 @@ machine_limits:
   # ─── HPR (Dikey Pres - Type 003) ─────────────────────────────────────────
   # HPR001, HPR005 ve diğer tam donanımlı presler
   HPR001:
-    oil_tank_temperature: { min: 0.0, max: 45.0, unit: "°C" }
-    main_pressure: { min: 0.0, max: 110.0, unit: "bar" }
-    horizontal_press_pressure: { min: 0.0, max: 120.0, unit: "bar" }
-    lower_ejector_pressure: { min: 0.0, max: 110.0, unit: "bar" }
+    oil_tank_temperature: { min: 0.0, warn_level: 39.5, max: 45.0, unit: "°C" }
+    main_pressure: { min: 0.0, warn_level: 95.0, max: 110.0, unit: "bar" }
+    horizontal_press_pressure: { min: 0.0, warn_level: 100.0, max: 120.0, unit: "bar" }
+    lower_ejector_pressure: { min: 0.0, warn_level: 90.0, max: 110.0, unit: "bar" }
     horitzonal_infeed_speed: { min: -300.0, max: 300.0, unit: "mm/sn" }
     vertical_infeed_speed: { min: -300.0, max: 300.0, unit: "mm/sn" }
 
   HPR003:
-    oil_tank_temperature: { min: 0.0, max: 45.0, unit: "°C" }
-    main_pressure: { min: 0.0, max: 110.0, unit: "bar" }
-    horizontal_press_pressure: { min: 0.0, max: 120.0, unit: "bar" }
-    lower_ejector_pressure: { min: 0.0, max: 110.0, unit: "bar" }
+    oil_tank_temperature: { min: 0.0, warn_level: 39.5, max: 45.0, unit: "°C" }
+    main_pressure: { min: 0.0, warn_level: 95.0, max: 110.0, unit: "bar" }
+    horizontal_press_pressure: { min: 0.0, warn_level: 100.0, max: 120.0, unit: "bar" }
+    lower_ejector_pressure: { min: 0.0, warn_level: 90.0, max: 110.0, unit: "bar" }
     horitzonal_infeed_speed: { min: -300.0, max: 300.0, unit: "mm/sn" }
     vertical_infeed_speed: { min: -300.0, max: 300.0, unit: "mm/sn" }
 
   HPR004:
-    oil_tank_temperature: { min: 0.0, max: 45.0, unit: "°C" }
-    main_pressure: { min: 0.0, max: 110.0, unit: "bar" }
-    horizontal_press_pressure: { min: 0.0, max: 120.0, unit: "bar" }
-    lower_ejector_pressure: { min: 0.0, max: 110.0, unit: "bar" }
+    # Yatay Pres — oil_tank_temperature sensörü fiziksel olarak YOK
+    horizontal_press_pressure: { min: 0.0, warn_level: 100.0, max: 120.0, unit: "bar" }
     horitzonal_infeed_speed: { min: -300.0, max: 300.0, unit: "mm/sn" }
-    vertical_infeed_speed: { min: -300.0, max: 300.0, unit: "mm/sn" }
 
   HPR005:
-    oil_tank_temperature: { min: 0.0, max: 45.0, unit: "°C" }
-    main_pressure: { min: 0.0, max: 110.0, unit: "bar" }
-    horizontal_press_pressure: { min: 0.0, max: 120.0, unit: "bar" }
-    lower_ejector_pressure: { min: 0.0, max: 110.0, unit: "bar" }
+    oil_tank_temperature: { min: 0.0, warn_level: 39.5, max: 45.0, unit: "°C" }
+    main_pressure: { min: 0.0, warn_level: 95.0, max: 110.0, unit: "bar" }
+    horizontal_press_pressure: { min: 0.0, warn_level: 100.0, max: 120.0, unit: "bar" }
+    lower_ejector_pressure: { min: 0.0, warn_level: 90.0, max: 110.0, unit: "bar" }
     horitzonal_infeed_speed: { min: -300.0, max: 300.0, unit: "mm/sn" }
     vertical_infeed_speed: { min: -300.0, max: 300.0, unit: "mm/sn" }
 

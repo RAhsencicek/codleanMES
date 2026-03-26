@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Codlean MES — HPR Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- ─── HEADER ─────────────────────────────────────────────────────── -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo">
+        <span class="logo-icon">⚙️</span>
+        <div>
+          <span class="logo-title">CODLEAN MES</span>
+          <span class="logo-sub">Arıza Tahmin Sistemi · HPR Monitor</span>
+        </div>
+      </div>
+    </div>
+    <div class="header-center">
+      <div class="stat-pill" id="pill-total">
+        <span class="pill-val" id="total-machines">6</span>
+        <span class="pill-label">Makine</span>
+      </div>
+      <div class="stat-pill" id="pill-alerts">
+        <span class="pill-val" id="alert-count">0</span>
+        <span class="pill-label">Aktif Alarm</span>
+      </div>
+      <div class="stat-pill" id="pill-faults">
+        <span class="pill-val" id="fault-count">0</span>
+        <span class="pill-label">ML Fault Veri</span>
+      </div>
+      <div class="stat-pill">
+        <span class="pill-val" id="uptime">00:00</span>
+        <span class="pill-label">Çalışma Süresi</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <!-- Filo Analizi Butonu -->
+      <button class="fleet-btn" id="fleet-btn" onclick="openFleet()" title="Tüm HPR makinelerini karşılaştır">
+        🏭 Filo Analizi
+      </button>
+      <div class="connection-badge" id="conn-badge">
+        <span class="conn-dot" id="conn-dot"></span>
+        <span id="conn-label">Bağlanıyor...</span>
+      </div>
+      <div class="clock" id="clock">00:00:00</div>
+    </div>
+  </header>
+
+  <!-- ─── MAIN ──────────────────────────────────────────────────────── -->
+  <main class="main">
+    <!-- 2×3 Grid -->
+    <section class="machines-grid" id="machines-grid">
+      <!-- JS ile doldurulur -->
+      <div class="loading-overlay" id="loading">
+        <div class="spinner"></div>
+        <p>HPR verisi yükleniyor...</p>
+      </div>
+    </section>
+
+    <!-- Alt panel: Log -->
+    <section class="bottom-bar">
+      <div class="log-panel">
+        <div class="panel-header">
+          <span>📋 Olay Akışı</span>
+          <span class="updated-at" id="updated-at">—</span>
+        </div>
+        <div class="log-list" id="log-list">
+          <div class="log-item log-info">Dashboard başlatılıyor...</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ─── USTA BAŞI MODAL ────────────────────────────────────────────── -->
+  <div class="modal-backdrop" id="usta-modal" onclick="closeUstaModal(event)">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span class="modal-icon">🤖</span>
+          <div>
+            <div class="modal-machine-id" id="modal-machine-id">HPR001</div>
+            <div class="modal-subtitle">AI Usta Başı · Bağlam Analizi</div>
+          </div>
+        </div>
+        <button class="modal-close" onclick="closeUstaModal()">✕</button>
+      </div>
+
+      <!-- Sensör özet kartı -->
+      <div class="modal-sensor-summary" id="modal-sensor-summary"></div>
+
+      <!-- Sohbet alanı -->
+      <div class="modal-chat" id="modal-chat">
+        <div class="chat-bubble chat-system">Makine bağlamı yüklendi. Sorunuzu yazın veya "Anlık Analiz" butonuna basın.</div>
+      </div>
+
+      <!-- Input alanı -->
+      <div class="modal-input-row">
+        <input
+          type="text"
+          id="usta-input"
+          class="usta-input"
+          placeholder="Soru sor... (Örn: Bu makine neden ısınıyor?)"
+          onkeydown="if(event.key==='Enter') sendUstaQuestion()"
+        />
+        <button class="btn-ask" onclick="sendUstaQuestion()" id="btn-ask">Gönder</button>
+        <button class="btn-analyze" onclick="sendAutoAnalyze()" id="btn-analyze">⚡ Anlık Analiz</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── FİLO ANALİZİ MODAL ────────────────────────────────────────── -->
+  <div class="modal-backdrop" id="fleet-modal" onclick="closeFleetModal(event)">
+    <div class="modal-box modal-box-wide">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span class="modal-icon">🏭</span>
+          <div>
+            <div class="modal-machine-id">Filo Analizi</div>
+            <div class="modal-subtitle">Tüm HPR Makineleri · Karşılaştırmalı Değerlendirme</div>
+          </div>
+        </div>
+        <button class="modal-close" onclick="closeFleetModal()">✕</button>
+      </div>
+      <div class="modal-chat" id="fleet-chat">
+        <div class="chat-bubble chat-system">Filo analizi başlatılıyor...</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

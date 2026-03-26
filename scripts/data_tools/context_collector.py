@@ -39,14 +39,39 @@ HPR_SENSORS = [
     "vertical_infeed_speed",
 ]
 
-HPR_LIMITS = {
-    "oil_tank_temperature":      {"min": 0,    "max": 45.0},
-    "main_pressure":             {"min": 0,    "max": 110.0},
-    "horizontal_press_pressure": {"min": 0,    "max": 120.0},
-    "lower_ejector_pressure":    {"min": 0,    "max": 110.0},
-    "horitzonal_infeed_speed":   {"min": -300, "max": 300.0},
-    "vertical_infeed_speed":     {"min": -300, "max": 300.0},
-}
+# Limitleri limits_config.yaml'dan oku (operasyonel eşiklerle uyumlu)
+def _load_hpr_limits() -> dict:
+    """limits_config.yaml'dan HPR limitleri yükle."""
+    _default = {
+        "oil_tank_temperature":      {"min": 0,    "max": 45.0},
+        "main_pressure":             {"min": 0,    "max": 110.0},
+        "horizontal_press_pressure": {"min": 0,    "max": 120.0},
+        "lower_ejector_pressure":    {"min": 0,    "max": 110.0},
+        "horitzonal_infeed_speed":   {"min": -300, "max": 300.0},
+        "vertical_infeed_speed":     {"min": -300, "max": 300.0},
+    }
+    try:
+        import yaml
+        cfg_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
+            os.path.abspath(__file__)))), "config", "limits_config.yaml")
+        with open(cfg_path) as f:
+            cfg = yaml.safe_load(f)
+        # HPR001 limitlerini referans al (dikey pres)
+        hpr_limits = cfg.get("machine_limits", {}).get("HPR001", {})
+        result = {}
+        for sensor in HPR_SENSORS:
+            sl = hpr_limits.get(sensor, {})
+            base_max = sl.get("max", _default.get(sensor, {}).get("max", float("inf")))
+            base_min = sl.get("min", _default.get(sensor, {}).get("min", float("-inf")))
+            # warn_level varsa daha düşük eşik kullan (erken uyarı)
+            warn = sl.get("warn_level", None)
+            effective_max = warn if warn and warn < base_max else base_max
+            result[sensor] = {"min": base_min, "max": effective_max}
+        return result
+    except Exception:
+        return _default
+
+HPR_LIMITS = _load_hpr_limits()
 
 # ─── Bellekte tutulan state ───────────────────────────────────────────────────
 # Her makine için son 30 dk verisini halka tamponunda tut

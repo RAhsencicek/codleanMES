@@ -1,0 +1,111 @@
+{
+  "version": "2.0",
+  "description": "Codlean MES — 10 Altın Kural (Sahaya Özgü Fizik Kuralları). Bakım mühendisi tecrübesi + hidrolik pres fiziği. 2026-03-26.",
+  "hpr_type_filter": {
+    "dikey_pres": ["HPR001", "HPR003", "HPR005"],
+    "yatay_pres": ["HPR002", "HPR004", "HPR006"],
+    "note": "Yatay presler oil_tank_temperature sensörü içermez. Bu kurallar context_builder'da HPR tipine göre filtrelenir."
+  },
+  "rules": {
+    "termal_stres_ve_sizinti_riski": {
+      "hpr_types": ["dikey_pres"],
+      "condition": {
+        "oil_tank_temperature": "> 40",
+        "main_pressure_ratio": "> 0.85"
+      },
+      "risk_multiplier": 30.0,
+      "explanation_tr": "Yağ sıcaklığı 40°C'yi aştı ve basınç limitin %85'ine dayandı. Yüksek sıcaklık yağın vizkozitesini düşürür, bu da sızıntı riskini ve aşınmayı artırır.",
+      "action_tr": "Soğutma sistemini kontrol edin, yağ seviyesini ve sızıntıları gözlemleyin."
+    },
+    "pompa_kavitasyon_ve_hava_emme": {
+      "hpr_types": ["dikey_pres"],
+      "condition": {
+        "main_pressure": "> 100",
+        "oil_tank_temperature": "> 42"
+      },
+      "risk_multiplier": 25.0,
+      "explanation_tr": "Yüksek basınç ve aşırı sıcaklık birleşti. Pompa kavitasyon (hava emme) yapıyor olabilir; bu durum pompanın ömrünü hızla tüketir.",
+      "action_tr": "Yağ tankı seviyesini kontrol edin, emiş hattında tıkanıklık veya hava girişi olup olmadığını inceleyin."
+    },
+    "ic_kacak_belirtisi_dusuk_basinc_yuksek_isi": {
+      "hpr_types": ["dikey_pres"],
+      "condition": {
+        "main_pressure_ratio": "< 0.6",
+        "oil_tank_temperature": "> 38"
+      },
+      "risk_multiplier": 20.0,
+      "explanation_tr": "Basınç düşük seyretmesine rağmen sıcaklık 38°C üzerine çıktı. Bu durum hidrolik devrede iç kaçak (internal leakage) olduğunu gösterir; enerji ısıya dönüşüyor.",
+      "action_tr": "Valf yuvalarını ve silindir contalarını kaçak testi için kontrol edin."
+    },
+    "filtre_tikanikligi_ve_yuksek_direnc": {
+      "hpr_types": ["dikey_pres", "yatay_pres"],
+      "condition": {
+        "pressure_line_filter_dirty_minutes": "> 30",
+        "main_pressure_ratio": "> 0.8"
+      },
+      "risk_multiplier": 15.0,
+      "explanation_tr": "Basınç hattı filtresi 30 dakikadır kirli uyarısı veriyor ve ana basınç %80'in üzerinde. Filtre tıkanıklığı pompa üzerinde ek yük oluşturuyor.",
+      "action_tr": "Filtre elemanını en kısa sürede değiştirin."
+    },
+    "yatay_pres_hareket_duzensizligi": {
+      "hpr_types": ["dikey_pres", "yatay_pres"],
+      "condition": {
+        "horitzonal_infeed_speed_ratio": "> 0.9",
+        "horizontal_press_pressure": "> 110"
+      },
+      "risk_multiplier": 20.0,
+      "explanation_tr": "Yatay besleme hızı maksimuma yakınken basınç da çok yüksek. Pres hareketinde takılma veya mekanik bir direnç (sürtünme) olabilir.",
+      "action_tr": "Kızakları yağlayın ve yatay pres yataklarını kontrol edin."
+    },
+    "sogutma_sistemi_verimsizligi": {
+      "hpr_types": ["dikey_pres"],
+      "condition": {
+        "oil_tank_temperature": "> 43",
+        "operating_minutes": "> 60"
+      },
+      "risk_multiplier": 10.0,
+      "explanation_tr": "Makine 1 saattir çalışıyor ve sıcaklık 43°C'ye ulaştı. Soğutma kulesi veya eşanjör ısıyı tahliye edemiyor.",
+      "action_tr": "Soğutma kulesi fanlarını ve su akışını kontrol edin."
+    },
+    "dikey_pres_asiri_yuklenme": {
+      "hpr_types": ["dikey_pres"],
+      "condition": {
+        "vertical_infeed_speed_ratio": "> 0.85",
+        "main_pressure": "> 105"
+      },
+      "risk_multiplier": 15.0,
+      "explanation_tr": "Dikey besleme hızı ve ana basınç aynı anda yüksek. Kalıp üzerinde aşırı yük veya yanlış parça yerleşimi olabilir.",
+      "action_tr": "Kalıp ayarlarını ve parça besleme mekanizmasını kontrol edin."
+    },
+    "soguk_baslangic_asiri_basinc": {
+      "hpr_types": ["dikey_pres", "yatay_pres"],
+      "condition": {
+        "operating_minutes": "< 15",
+        "main_pressure": "> 100"
+      },
+      "risk_multiplier": 5.0,
+      "explanation_tr": "Makine yeni çalışmaya başladı (ilk 15 dk) ve basınç hemen 100 barı geçti. Soğuk yağın vizkozitesi yüksektir, ani yüklenme contalara zarar verebilir.",
+      "action_tr": "Makinenin ısınması için düşük yükte birkaç tur çalıştırılmasını sağlayın."
+    },
+    "alt_ejektor_sikismasi": {
+      "hpr_types": ["dikey_pres"],
+      "condition": {
+        "lower_ejector_pressure": "> 100",
+        "vertical_infeed_speed": "< 10"
+      },
+      "risk_multiplier": 20.0,
+      "explanation_tr": "Alt itici basıncı çok yüksek ancak dikey hız çok düşük. İtici mekanizması sıkışmış veya parça kalıptan çıkmıyor olabilir.",
+      "action_tr": "Alt itici pimlerini ve kalıp çıkışını kontrol edin."
+    },
+    "yatay_pres_hidrolik_kayma_drift": {
+      "hpr_types": ["yatay_pres"],
+      "condition": {
+        "horizontal_press_pressure": "> 115",
+        "horitzonal_infeed_speed": "< 5"
+      },
+      "risk_multiplier": 25.0,
+      "explanation_tr": "Yatay basınç 115 barın üzerinde ancak hareket neredeyse yok. Hidrolik drift veya silindir içi kilitlenme belirtisi.",
+      "action_tr": "Yatay silindir valflerini ve sızdırmazlık elemanlarını kontrol edin."
+    }
+  }
+}

@@ -256,7 +256,7 @@ def check_startup(machine_id: str, execution: str | None, startup_state: dict) -
 
 def process_message(
     raw_data: dict,
-    ewma_state: dict,  # {machine_id: {sensor: {ewma_mean, ewma_std, count}}}
+    ewma_state: dict,  # state_store formatı: {machine_id: {ewma_mean: {sensor: float}, ewma_var: {sensor: float}, sample_count: {sensor: int}}}
     startup_state: dict,  # {machine_id: {last_execution, startup_ts}}
 ) -> list[dict]:
     """
@@ -315,9 +315,18 @@ def process_message(
                 # Önce sayısal dene
                 num = safe_numeric(raw_val)
                 if num is not None:
-                    # Spike kontrolü
-                    stats = ewma_state.get(machine_id, {}).get(did, {})
-                    if is_spike(num, stats):
+                    # Spike kontrolü — state_store yapısından doğru eriş:
+                    # ewma_state[machine_id]["ewma_mean"][sensor] ve ewma_var/sample_count
+                    ms = ewma_state.get(machine_id, {})
+                    count = ms.get("sample_count", {}).get(did, 0)
+                    mean  = ms.get("ewma_mean",   {}).get(did)
+                    var   = ms.get("ewma_var",    {}).get(did, 0.0)
+                    spike_stats = {
+                        "count":     count,
+                        "ewma_mean": mean,
+                        "ewma_std":  var ** 0.5 if var and var > 0 else 0.0,
+                    }
+                    if is_spike(num, spike_stats):
                         log.warning("SPIKE_SKIP | %s.%s = %.3f", machine_id, did, num)
                         continue
                     numeric[did] = num

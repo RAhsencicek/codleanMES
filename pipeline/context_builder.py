@@ -13,6 +13,10 @@ import os
 from datetime import datetime
 from typing import Any
 
+# HPR tip grupları — Yatay presler oil_tank_temperature sensörü içermiyor
+_YATAY_PRESLER = {"HPR002", "HPR004", "HPR006"}
+_DIKEY_PRESLER = {"HPR001", "HPR003", "HPR005"}
+
 # Sensör Türkçe isimleri ve birimleri
 SENSOR_META = {
     "oil_tank_temperature": {"name": "Yağ Sıcaklığı", "unit": "°C"},
@@ -100,6 +104,36 @@ def build(
     # operating_minutes: machine_data'dan al — cold_startup_mask kuralı için
     enriched_sensors["operating_minutes"] = md.get("operating_minutes", 0)
 
+    # ── KATMAN 2: Yeni Zengin Metrikler ──────────────────────────────────
+
+    # filter_dirty_minutes: bool_active_since'den filtre kirliliği süresi
+    # boolean sensörler için machine_data["booleans"] aktärılır (kac dakika kotu durumda)
+    _bool_actives = md.get("booleans", {})
+    _filter_bad_minutes = 0.0
+    for _bkey in ("pressure_line_filter_1_dirty", "pressure_line_filter_2_dirty",
+                  "pressure_line_filter_3_dirty", "pressure_line_filter_4_dirty"):
+        _bad_min = _bool_actives.get(_bkey)
+        if _bad_min and isinstance(_bad_min, (int, float)) and _bad_min > 0:
+            _filter_bad_minutes = max(_filter_bad_minutes, _bad_min)
+    enriched_sensors["pressure_line_filter_dirty_minutes"] = _filter_bad_minutes
+
+    # trend_direction: Ana basınç trendini okunabilir etiketle ver
+    _press_slope = trends.get("main_pressure")
+    if _press_slope is None:
+        enriched_sensors["trend_direction"] = "STABIL"
+    elif _press_slope > 0.5:
+        enriched_sensors["trend_direction"] = "ARTIYOR"
+    elif _press_slope < -0.5:
+        enriched_sensors["trend_direction"] = "AZALIYOR"
+    else:
+        enriched_sensors["trend_direction"] = "STABIL"
+
+    # horizontal_press_pressure_ratio: Yatay presler için
+    _hp_val = sensors.get("horizontal_press_pressure")
+    _hp_lim = mac_lims.get("horizontal_press_pressure", {}).get("max")
+    if _hp_val is not None and _hp_lim and _hp_lim > 0:
+        enriched_sensors["horizontal_press_pressure_ratio"] = round(_hp_val / _hp_lim, 3)
+
     # ── 1. Sensör durumları ─────────────────────────────────────────────────
     sensor_states = {}
     limit_violations = []
@@ -180,14 +214,23 @@ def build(
     if causal_rules_path and os.path.exists(causal_rules_path):
         try:
             data = json.load(open(causal_rules_path, encoding="utf-8"))
-            # "rules" bir dict: {kural_adi: kural_bilgisi}
             rules_dict = data.get("rules", {})
+
+            # HPR tipi filtresi — yanat presler için sıcaklık kuralı atlat
+            _is_yatay = machine_id in _YATAY_PRESLER
 
             for rule_name, rule_data in rules_dict.items():
                 if not isinstance(rule_data, dict):
                     continue
 
-                # condition dict: {"oil_tank_temperature": "> 40", "main_pressure": "> 100"}
+                # HPR tipi filtreleme
+                hpr_types = rule_data.get("hpr_types")
+                if hpr_types:
+                    if _is_yatay and "yatay_pres" not in hpr_types:
+                        continue  # Yatay pres bu kuralı atlatsın
+                    if not _is_yatay and "dikey_pres" not in hpr_types:
+                        continue  # Dikey pres bu kuralı atlatsın
+
                 condition = rule_data.get("condition", {})
                 matched = True
 
@@ -249,8 +292,19 @@ def build(
     operating_h = operating_min // 60
     operating_m = operating_min % 60
 
-    # ── 5. Geçmiş benzer olaylar (Faz 2'de doldurulacak) ───────────────────
-    similar_past_events = []  # SimilarityEngine Faz 2'de buraya yazacak
+    # ── 5. Geçmiş benzer olaylar (SimilarityEngine) ────────────────────────
+    try:
+        from pipeline.similarity_engine import find_similar
+        similar_past_events = find_similar(
+            current_sensors=sensors,
+            machine_id=machine_id,
+            top_k=3,
+            min_similarity=0.75,
+        )
+    except Exception as _sim_err:
+        import logging as _log2
+        _log2.getLogger("context_builder").debug("SimilarityEngine hatası: %s", _sim_err)
+        similar_past_events = []
 
     # ── 6. Son uyarı özeti ───────────────────────────────────────────────────
     last_alerts = md.get("last_alerts", [])

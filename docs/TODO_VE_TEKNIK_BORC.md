@@ -22,7 +22,7 @@
 | Bileşen | Açıklama |
 |---------|----------|
 | Kafka bağlantısı | `mqtt-topic-v2` @ `10.71.120.10:7001`, 10 partition, canlı mesaj akışı var |
-| Veri doğrulama | Spike filtresi, stale kontrol, startup maskesi, parse hata logları |
+| Veri doğrulama | Spike filtresi (2026-03-25 düzeltildi), stale kontrol, startup maskesi, parse hata logları |
 | State store | RAM ring buffer (720 örnek = ~2 saat), EWMA, disk checkpoint (5 dk) |
 | Threshold alarmları | IK veritabanından alınan limitlerle anlık eşik kontrolü |
 | Trend tespiti + ETA | Lineer regresyon, R²≥0.70 filtresi, limite kalan dakika tahmini |

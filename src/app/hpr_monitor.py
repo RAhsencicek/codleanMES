@@ -109,8 +109,8 @@ BOOL_RULES = CONFIG.get("boolean_rules", {})
 EWMA_ALPHA = CONFIG.get("ewma_alpha", {})
 PIPELINE = CONFIG.get("pipeline", {})
 CAUSAL_RULES_PATH = _os.path.join(
-    _ROOT, "docs", "causal_rules.json"
-)  # FIX P0-2: docs/ klasöründe
+    _ROOT, "docs", "causal_rules_v2.json"
+)  # v2: 10 altın kural — HPR tipi bazlı filtreleme
 KAFKA_CFG = CONFIG["kafka"]
 # Env var override — production ortamında YAML'ı değiştirmeye gerek yok
 if _os.environ.get("KAFKA_BOOTSTRAP_SERVERS"):
@@ -599,7 +599,7 @@ def process(raw: dict):
 
         # Sadece HPR
         if not mid.startswith("HPR"):
-            return
+            continue
 
         stats["hpr_msgs"] += 1
         md = machine_data[mid]

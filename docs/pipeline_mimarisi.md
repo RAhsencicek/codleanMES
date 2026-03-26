@@ -102,7 +102,7 @@ Kafka Broker (mqtt-topic-v2, 10.71.120.10:7001)
 | **hpr_monitor.py** | `src/app/` | Ana uygulama — tüm katmanları birbirine bağlar |
 | **data_validator.py** | `src/core/` | Katman 0 — ham veriyi temizler |
 | **state_store.py** | `src/core/` | Katman 1 — ring buffer, EWMA, disk checkpoint |
-| **kafka_consumer.py** | `src/core/` | Genel amaçlı Kafka tüketicisi (tüm makine tipleri) |
+| **kafka_consumer.py** | `src/core/` | ⚠️ **Deprecated** — `hpr_monitor.py`'nin eski versiyonu. Physics kuralları çalışmaz. Kullanma. |
 | **threshold_checker.py** | `src/analysis/` | Anlık limit kontrolü |
 | **trend_detector.py** | `src/analysis/` | Lineer regresyon + ETA hesabı |
 | **risk_scorer.py** | `src/analysis/` | Ensemble risk puanı (0-100) |
