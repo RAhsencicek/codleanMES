@@ -17,8 +17,18 @@ import logging
 import os
 import threading
 import time
+import traceback
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable
+
+# .env dosyasından API key yükle
+try:
+    from dotenv import load_dotenv
+    _env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+    load_dotenv(_env_path)
+    _dotenv_loaded = True
+except ImportError:
+    _dotenv_loaded = False
 
 log = logging.getLogger("llm_engine")
 
@@ -182,24 +192,36 @@ class UstaBasi:
     AUTO_INTERVAL_SEC = 300  # Otomatik analizde 5 dakika
     ALERT_INTERVAL_SEC = 60  # Alert sonrası 1 dakika
     # FIX P1-2: Gemini API için maksimum bekleme süresi
-    CALL_TIMEOUT_SEC = 10  # 10 saniyede yanıt gelmezse boş dön
+    CALL_TIMEOUT_SEC = 30  # 30 saniyede yanıt gelmezse hata dön
 
-    def __init__(self, api_key: str = None, model_name: str = "gemini-2.0-flash"):
+    def __init__(self, api_key: str = None, model_name: str = "gemini-2.5-flash"):
         self._ready = False
         self._client = None
         self._model_name = model_name
-        key = api_key or os.environ.get("GEMINI_API_KEY")
+        self._init_error = None
+
+        key = api_key or os.environ.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
+
+        log.info(f"[LLM_INIT] dotenv yüklendi: {_dotenv_loaded}")
+        log.info(f"[LLM_INIT] API Key mevcut: {bool(key)}")
+        if key:
+            log.info(f"[LLM_INIT] API Key ilk 8 karakter: {key[:8]}...")
+
         if not key:
-            log.warning("GEMINI_API_KEY tanımlı değil — LLM devre dışı")
+            self._init_error = "GEMINI_API_KEY tanımlı değil. .env dosyasını kontrol edin."
+            log.warning(f"[LLM_INIT] {self._init_error}")
             return
         try:
             from google import genai
-
             self._client = genai.Client(api_key=key)
             self._ready = True
-            log.info(f"AI Usta Başı hazır ({model_name})")
+            log.info(f"[LLM_INIT] ✅ AI Usta Başı hazır ({model_name})")
+        except ImportError:
+            self._init_error = "google-generativeai kütüphanesi kurulu değil. 'pip install google-genai' çalıştırın."
+            log.error(f"[LLM_INIT] {self._init_error}")
         except Exception as e:
-            log.error(f"Gemini başlatılamadı: {e}")
+            self._init_error = f"Gemini başlatılamadı: {e}"
+            log.error(f"[LLM_INIT] {self._init_error}")
 
     @property
     def is_ready(self) -> bool:
@@ -209,13 +231,10 @@ class UstaBasi:
     def _call(self, prompt: str) -> str:
         """
         Gemini API'ye senkron çağrı yapar.
-        CALL_TIMEOUT_SEC içinde yanıt gelmezse boş string döner.
-
-        FIX P1-2: Timeout mekanizması — API askıda kalırsa thread sonsuza
-        beklemesin. Timeout dolunca warning log'u üretilir ve "" döner.
+        Hata durumunda kullanıcıya anlamlı mesaj döner.
         """
         if not self._ready:
-            return ""
+            return self._init_error or "AI Usta Başı hazır değil."
 
         result_container: list[str] = [""]
         error_container: list[Exception | None] = [None]
@@ -243,16 +262,24 @@ class UstaBasi:
 
         if worker.is_alive():
             log.warning(
-                "Gemini API timeout (%ds) — yanıt gelmedi, boş döndürülüyor. "
-                "Prompt uzunluğu: %d karakter",
+                "Gemini API timeout (%ds) — yanıt gelmedi.",
                 self.CALL_TIMEOUT_SEC,
-                len(prompt),
             )
-            return ""
+            return f"⏰ API zaman aşımı ({self.CALL_TIMEOUT_SEC}s). Lütfen tekrar deneyin."
 
         if error_container[0] is not None:
-            log.error("Gemini API hatası: %s", error_container[0])
-            return ""
+            err = error_container[0]
+            err_str = str(err)
+            log.error("Gemini API hatası: %s", err_str)
+
+            if "quota" in err_str.lower() or "429" in err_str:
+                return "🚫 API kotası doldu. Lütfen birkaç dakika sonra tekrar deneyin."
+            elif "403" in err_str or "permission" in err_str.lower():
+                return "🔑 API anahtarı geçersiz veya yetkisiz. Lütfen GEMINI_API_KEY'i kontrol edin."
+            elif "network" in err_str.lower() or "connection" in err_str.lower():
+                return "🌐 API bağlantı hatası. İnternet bağlantısını kontrol edin."
+            else:
+                return f"❌ API hatası: {err_str[:200]}"
 
         return result_container[0]
 

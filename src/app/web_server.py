@@ -297,7 +297,7 @@ def _get_usta():
         return None
 
 def _build_context_for(machine_id: str, machine_payload: dict) -> dict:
-    """Web server için makine bağlam paketi oluşturur."""
+    """Web server için makine bağlam paketi oluşturur. Causal teşhisleri Gemini'ye aktarır."""
     state = read_state()
     ms    = state.get(machine_id, {})
     means = ms.get("ewma_mean", {}) or {}
@@ -306,10 +306,25 @@ def _build_context_for(machine_id: str, machine_payload: dict) -> dict:
     # Sensor states
     sensor_states = {}
     lims = LIMITS.get(machine_id, {})
+    limit_violations = []
+    critical_sensors = []
+
     for s, v in sensors.items():
         lim   = lims.get(s, {})
         max_l = lim.get("max")
+        warn_l = lim.get("warn_level")
         pct   = abs(v) / max_l * 100 if max_l and max_l > 0 else 0.0
+
+        # Limit ihlali ve kritik sensör tespiti
+        if max_l and abs(v) >= max_l:
+            limit_violations.append(
+                f"{_tr(s)}: {v:.1f} {lim.get('unit','')} (limit: {max_l} — %{pct:.0f} AŞILDI)"
+            )
+        elif max_l and pct >= 85:
+            critical_sensors.append(
+                f"{_tr(s)}: {v:.1f} {lim.get('unit','')} (limitin %{pct:.0f}'ine ulaştı)"
+            )
+
         sensor_states[s] = {
             "turkish_name": _tr(s),
             "value":        round(v, 2),
@@ -322,6 +337,14 @@ def _build_context_for(machine_id: str, machine_payload: dict) -> dict:
 
     risk_score = machine_payload.get("risk_score", 0)
     severity   = machine_payload.get("severity",   "NORMAL")
+
+    # Causal teşhisleri aktif fizik kurallarına dönüştür
+    active_rules = []
+    diagnoses = machine_payload.get("diagnoses", [])
+    for d in diagnoses:
+        active_rules.append(
+            f"🩺 {d['rule'].upper()}: {d['explanation_tr']} (risk: +{d['risk_add']}) → Öneri: {d['action_tr']}"
+        )
 
     # Benzer geçmiş olaylar
     similar = []
@@ -337,15 +360,15 @@ def _build_context_for(machine_id: str, machine_payload: dict) -> dict:
         "risk_score":          risk_score,
         "severity":            severity,
         "confidence":          ms.get("confidence", 0) or 0,
-        "operating_time":      f"{ms.get('operating_minutes', 0) // 60} saat",
+        "operating_time":      f"{(ms.get('operating_minutes', 0) or 0) // 60} saat",
         "operating_minutes":   ms.get("operating_minutes", 0) or 0,
         "last_alert_source":   ms.get("last_alert_source", ""),
         "alert_count_session": ms.get("alert_count", 0) or 0,
         "sensor_states":       sensor_states,
-        "limit_violations":    [],
-        "critical_sensors":    [],
+        "limit_violations":    limit_violations,
+        "critical_sensors":    critical_sensors,
         "eta_predictions":     {},
-        "active_physics_rules":[],
+        "active_physics_rules": active_rules,
         "last_alerts":         ms.get("last_alerts", [])[-3:],
         "similar_past_events": similar,
     }
