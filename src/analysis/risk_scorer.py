@@ -82,7 +82,7 @@ def _ensemble_weights(confidence: float) -> tuple[float, float, float]:
 # Causal Rules JSON yükleme
 _CAUSAL_RULES_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    "docs", "causal_rules_v2.json"
+    "docs", "causal_rules.json"
 )
 try:
     with open(_CAUSAL_RULES_PATH) as _f:

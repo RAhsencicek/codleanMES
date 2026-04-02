@@ -52,7 +52,7 @@ class DLIMEExplainer:
         df = pd.read_csv(self.training_data_path)
         
         # Meta verileri (machine_id vb) atıp sadece özellikleri al
-        drop_cols = ["machine_id", "window_start", "_source", "label", "binary_label"]
+        drop_cols = ["machine_id", "timestamp", "window_start", "_source", "label", "binary_label"]
         features_df = df.drop(columns=[c for c in drop_cols if c in df.columns], errors='ignore')
         self.feature_names = features_df.columns.tolist()
 

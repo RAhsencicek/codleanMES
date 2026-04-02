@@ -92,9 +92,13 @@ class MLPredictor:
         if os.path.exists(FEATURE_JSON):
             with open(FEATURE_JSON, "r") as f:
                 self._feature_meta = json.load(f)
-            self._feature_names = self._feature_meta.get("feature_names", [])
-            log.info("   Özellik sayısı : %d", len(self._feature_names))
-            log.info("   Model türü     : %s", self._feature_meta.get("model_name", "?"))
+            if isinstance(self._feature_meta, list):
+                self._feature_names = self._feature_meta
+                log.info("   Özellik sayısı : %d", len(self._feature_names))
+            else:
+                self._feature_names = self._feature_meta.get("feature_names", [])
+                log.info("   Özellik sayısı : %d", len(self._feature_names))
+                log.info("   Model türü     : %s", self._feature_meta.get("model_name", "?"))
         else:
             log.warning("feature_names.json bulunamadı, özellikler hizalanamayacak.")
 
@@ -240,6 +244,7 @@ class MLPredictor:
         else:
             vector = np.array(list(feat.values()), dtype=float)
 
+        state["last_ml_features"] = dict(feat) # ContextBuilder içindeki SimilarityEngine için sakla
         vector = np.nan_to_num(vector, nan=0.0)
         return vector.reshape(1, -1)
 

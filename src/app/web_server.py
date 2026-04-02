@@ -27,7 +27,7 @@ BASE_DIR    = Path(__file__).resolve().parents[2]
 STATE_PATH   = BASE_DIR / "state.json"
 CONTEXT_PATH = BASE_DIR / "rich_context_windows.json"
 LIMITS_PATH  = BASE_DIR / "config" / "limits_config.yaml"
-RULES_PATH   = BASE_DIR / "docs" / "causal_rules_v2.json"
+RULES_PATH   = BASE_DIR / "docs" / "causal_rules.json"
 STATIC_DIR   = BASE_DIR / "src" / "ui" / "web"
 
 # pipeline/ paketine erişim için path ekle

@@ -1,119 +1,140 @@
-import json
-import logging
-import os
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+"""
+src/analysis/similarity_engine.py
+═══════════════════════════════════════════════
+Geçmiş olay hafızası (Contextual Memory).
+ML için oluşturulan data/ml_training_data_v2.csv dosyasını okuyup,
+Anlık makine durumunun geçmişteki olaylara (FAULT/PRE-FAULT) ne kadar
+benzediğini hesaplar (Cosine Similarity).
 
-log = logging.getLogger("SimilarityEngine")
+Usta Başı'nın (Gemini) "Bu olay daha önce yaşanmış mı?"
+sorusuna istatistiksel yanıt üretir.
+"""
+
+import os
+import pandas as pd
+import numpy as np
+import logging
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.preprocessing import StandardScaler
+
+log = logging.getLogger("similarity_engine")
 
 class SimilarityEngine:
-    def __init__(self, violation_log_path: str):
-        self.violation_log_path = violation_log_path
-        self._cache: Dict[str, Any] = {}
-        self._last_loaded: float = 0
-        self._cache_ttl = 60  # Cache for 60 seconds
+    _instance = None
+    
+    def __new__(cls, dataset_path="data/ml_training_data_v2.csv"):
+        if cls._instance is None:
+            cls._instance = super(SimilarityEngine, cls).__new__(cls)
+            cls._instance._df = None
+            cls._instance._feature_matrix = None
+            cls._instance._scaler = None
+            cls._instance._feature_cols = []
+            cls._instance._load_data(dataset_path)
+        return cls._instance
 
-    def _load_data(self) -> Dict[str, Any]:
-        import time
-        now = time.time()
-        if self._cache and (now - self._last_loaded) < self._cache_ttl:
-            return self._cache
-
-        if not os.path.exists(self.violation_log_path):
-            log.warning(f"SimilarityEngine: {self.violation_log_path} bulunamadı.")
-            return {}
+    def _load_data(self, dataset_path: str):
+        if not os.path.exists(dataset_path):
+            log.warning("⚠️ SimilarityEngine veri seti bulamadı: %s", dataset_path)
+            return
 
         try:
-            with open(self.violation_log_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                self._cache = data
-                self._last_loaded = now
-                return data
-        except Exception as e:
-            log.error(f"SimilarityEngine veri okuma hatasi: {e}")
-            return {}
-
-    def get_past_events_summary(self, 
-                              machine_id: str,
-                              sensor_name: str, 
-                              current_value: float, 
-                              lookback_days: int = 7) -> str:
-        """
-        Belirtilen sensörün geçmiş (violation_log'daki) ihlal istatistiklerini çıkarır.
-        """
-        data = self._load_data()
-        if not data:
-            return "Geçmiş ihlal veritabanı bulunamadı veya boş."
-
-        violations_dict = data.get("violations", {})
-        machine_data = violations_dict.get(machine_id, {})
-        sensor_data = machine_data.get(sensor_name, {})
-        violations: List[Dict[str, Any]] = sensor_data.get("violations", [])
-        
-        if not violations:
-            return f"Bu sensör ({sensor_name}) için kayıtlı hiçbir geçmiş ihlal bulunamadı. Bu ilk vaka olabilir."
-
-        now = datetime.utcnow()
-        recent_count = 0
-        max_recorded = float('-inf')
-        min_recorded = float('inf')
-        last_violation_date = None
-        last_violation_value = None
-
-        for v in violations:
-            try:
-                # "2026-03-04T21:49:58.5552093Z" -> remove fractions if needed or use fromisoformat safely
-                ts_str = v.get("ts", "").replace('Z', '+00:00')
-                if '.' in ts_str and len(ts_str.split('.')[1]) > 7:
-                    # fromisoformat requires max 6 microsecond digits
-                    parts = ts_str.split('.')
-                    ts_str = parts[0] + '.' + parts[1][:6] + '+00:00'
-                
-                v_date = datetime.fromisoformat(ts_str)
-                # Convert to naive UTC for easy comparison
-                v_date = v_date.replace(tzinfo=None)
-                
-                val = float(v.get("value", 0))
-                
-                if val > max_recorded: max_recorded = val
-                if val < min_recorded: min_recorded = val
-
-                if (now - v_date).days <= lookback_days:
-                    recent_count += 1
-                
-                if last_violation_date is None or v_date > last_violation_date:
-                    last_violation_date = v_date
-                    last_violation_value = val
-
-            except Exception:
-                continue
-
-        total_all_time = sensor_data.get("total", len(violations))
-        
-        summary = f"Geçmiş Olay Özeti ({sensor_name}):\n"
-        if recent_count > 0:
-            summary += f"- Son {lookback_days} günde {recent_count} kez benzer uyarı/ihlal yaşanmış (Tüm zamanlar: {total_all_time} kez).\n"
-        else:
-            summary += f"- Son {lookback_days} günde hiç ihlal YOK, ancak geçmişte {total_all_time} kez yaşanmış.\n"
-
-        if last_violation_date:
-            days_ago = (now - last_violation_date).days
-            hours_ago = int((now - last_violation_date).total_seconds() / 3600)
+            df = pd.read_csv(dataset_path)
+            # Sadece anormal durumları (FAULT/PRE-FAULT) arayalım ki Gemini onlara benzeyip benzemediğini görsün.
+            # Ancak Normal'leri de tutarsak tam spektrum görür.
+            # En öğretici olan: "Bu durum, geçmişteki şu arızalara X derece benziyor" diyebilmek.
+            # O yüzden tüm datayı yükleyip KNN/Cosine yapalım ama sonuçları filtreleyelim.
             
-            if days_ago == 0:
-                time_str = f"{hours_ago} saat önce"
-            else:
-                time_str = f"{days_ago} gün önce"
+            meta_cols = ["machine_id", "timestamp", "label", "binary_label"]
+            self._feature_cols = [c for c in df.columns if c not in meta_cols]
+            
+            df.fillna(0, inplace=True)
+            X = df[self._feature_cols].values
+            
+            # Normalizasyon önemli çünkü farklı sensörlerin (sıcaklık vs basınç) skalaları farklı!
+            self._scaler = StandardScaler()
+            self._feature_matrix = self._scaler.fit_transform(X)
+            self._df = df
+            
+            log.info("✅ SimilarityEngine hazır. %d satır, %d özellik geçmiş hafızaya alındı.", len(df), len(self._feature_cols))
+            
+        except Exception as e:
+            log.error("SimilarityEngine yükleme hatası: %s", e)
+
+    def find_similar_events(self, live_features: dict, current_machine_id: str, top_k: int = 3) -> str:
+        """
+        Canlı veriyi alır, ML model formatındaki dictionary'yi vektörleştirir,
+        geçmiş hafıza tablosu ile kosinüs benzerliğini hesaplar ve insan okunabilir
+        bir özet (örneğin Gemini'nin tüketmesi için) string olarak döndürür.
+        """
+        if self._df is None or self._feature_matrix is None:
+            return "Geçmiş olay hafızası veritabanı aktif değil."
+
+        try:
+            # 1. Gelen sözlüğü eğitim sırasına diz
+            vec = np.array([live_features.get(c, 0.0) for c in self._feature_cols], dtype=float).reshape(1, -1)
+            
+            # 2. Vektörü normalize et
+            vec_scaled = self._scaler.transform(vec)
+            
+            # 3. Tüm hafızaya karşı Kosinüs Benzerliği (Cosine Similarity) matrisi çıkar
+            # Sonuç shape: (1, N)
+            similarities = cosine_similarity(vec_scaled, self._feature_matrix)[0]
+            
+            # 4. En çok benzeyen (skoru en yüksek olan) indeksleri bul
+            # Kendisini bulmasını engellemek için %99 üstünü kesebiliriz ama test için bırakalım
+            top_indices = np.argsort(similarities)[::-1][:top_k*3] # Ekstra alıp filtreleriz
+            
+            events = []
+            seen_dates = set()
+            
+            for idx in top_indices:
+                score = similarities[idx]
+                if score < 0.60:  # %60'tan az benziyorsa önemseme
+                    continue
+                    
+                row = self._df.iloc[idx]
+                dt = str(row['timestamp'])[:10]  # Sadece YYYY-MM-DD
                 
-            summary += f"- En son olay {time_str} ({last_violation_date.strftime('%Y-%m-%d %H:%M')}) gerçekleşmiş ve değeri {last_violation_value:.1f} ölçülmüş.\n"
+                # Aynı gün içindeki birbirine yapışık pencereleri tekrar tekrar söyleme
+                if dt in seen_dates:
+                    continue
+                    
+                seen_dates.add(dt)
+                events.append({
+                    'score': score * 100,
+                    'machine': row['machine_id'],
+                    'date': row['timestamp'],
+                    'label': row['label']
+                })
+                
+                if len(events) >= top_k:
+                    break
+                    
+            if not events:
+                return "Şu anki makine davranışı geçmişteki hiçbir kritik olaya (%60'tan fazla) benzemiyor (Güvenli/Benzersiz durum)."
+                
+            # 5. Gemini için Context Metni Oluştur
+            lines = ["🕒 GEÇMİŞ OLAY HAFIZASI (Cosine Similarity Araması):"]
+            lines.append("Şu anki makine sensör hareketleri, geçmişteki veri tabanıyla tarandığında şu tarihi olaylarla eşleşti:")
+            
+            for i, ev in enumerate(events):
+                # Aynı makine mi?
+                same_mac = "(Bu Makinenin Kendisi!)" if ev['machine'] == current_machine_id else ""
+                
+                label_tr = "Arıza OLUŞTU (FAULT)" if ev['label'] == 'FAULT' else "Arıza İhtimali (PRE-FAULT)" if ev['label'] == 'PRE-FAULT' else "Normal Çalışma"
+                
+                txt = f" {i+1}. %{ev['score']:.1f} Eşleşme - Tarih: {ev['date'][:16]} | Makine: {ev['machine']} {same_mac} | Olay Sonucu: {label_tr}"
+                lines.append(txt)
+                
+            # Makinenin kendi geneline dair basit fault sayacı
+            machine_faults = len(self._df[(self._df['machine_id'] == current_machine_id) & (self._df['label'] == 'FAULT')])
+            if machine_faults > 20:
+                lines.append(f"\n⚠️ NOT: Bu makine ({current_machine_id}) geçmişte çok sık ({machine_faults} kez) arıza vermiş, KRONİK sorunlu olabilir.")
+            elif machine_faults == 0:
+                lines.append(f"\n✅ NOT: Bu makine ({current_machine_id}) geçmiş kayıtlarında hiç arıza YAPMAMIŞ çok sağlam bir makinedir.")
+                
+            return "\n".join(lines)
 
-        if max_recorded > -999999 and min_recorded < 999999:
-            # Sadece tavan ve taban mantıklıysa göster
-            summary += f"- Kaydedilen en aşırı değerler: Min {min_recorded:.1f}, Max {max_recorded:.1f}.\n"
-
-        if recent_count > 10:
-            summary += "-> UYARI: Bu hata kronikleşmiş görünüyor. Fiziksel donanım kontrolü zorunlu!\n"
-        elif recent_count == 0:
-            summary += "-> NADİR OLAY: Bu makine için çok nadir bir uyarı, anlık bir anormallik olabilir.\n"
-
-        return summary
+        except Exception as e:
+            log.exception("Similarity hesaplama hatası:")
+            return f"Benzerlik araması teknik bir nedenden yapılamadı: {str(e)}"

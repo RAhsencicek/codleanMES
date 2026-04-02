@@ -292,25 +292,24 @@ def build(
     operating_h = operating_min // 60
     operating_m = operating_min % 60
 
-    # ── 5. Geçmiş benzer olaylar (SimilarityEngine v1) ──────────────────────
+    # ── 5. Geçmiş benzer olaylar (SimilarityEngine v1 - Faz A) ────────────────
     similar_past_events = []
     try:
         from src.analysis.similarity_engine import SimilarityEngine
         import os
-        v_path = os.path.join(os.path.dirname(__file__), "..", "data", "violation_log.json")
+        v_path = os.path.join(os.path.dirname(__file__), "..", "data", "ml_training_data_v2.csv")
         sim_engine = SimilarityEngine(v_path)
         
-        # Sadece ihlal durumunda olan (warn veya critical) sensörlerin geçmişini getir
-        for s_key, s_data in enriched_sensors.items():
-            if s_data.get("status") in ["warn", "critical"]:
-                summary = sim_engine.get_past_events_summary(
-                    machine_id=machine_id,
-                    sensor_name=s_key,
-                    current_value=s_data.get("value", 0.0),
-                    lookback_days=7
-                )
-                if summary:
-                    similar_past_events.append(summary)
+        live_features = md.get("last_ml_features", {})
+        if live_features:
+            summary = sim_engine.find_similar_events(
+                live_features=live_features,
+                current_machine_id=machine_id,
+                top_k=3
+            )
+            if summary and summary != "Geçmiş olay hafızası veritabanı aktif değil.":
+                similar_past_events.append(summary)
+                
     except Exception as _sim_err:
         import logging as _log2
         _log2.getLogger("context_builder").debug("SimilarityEngine hatası: %s", _sim_err)
