@@ -1,0 +1,41 @@
+scripts/data_tools/context_collector.py:54: error: Library stubs not installed for "yaml"  [import-untyped]
+scripts/data_tools/daily_data_manager.py:88: error: Need type annotation for "messages" (hint: "messages: list[<type>] = ...")  [var-annotated]
+scripts/data_tools/daily_data_manager.py:154: error: Need type annotation for "contexts"  [var-annotated]
+scripts/data_tools/daily_data_manager.py:220: error: Need type annotation for "predictions" (hint: "predictions: list[<type>] = ...")  [var-annotated]
+scripts/data_tools/daily_data_manager.py:263: error: Need type annotation for "alerts" (hint: "alerts: list[<type>] = ...")  [var-annotated]
+scripts/data_tools/daily_data_manager.py:413: error: Incompatible types in assignment (expression has type "dict[str, list[Never]]", target has type "bool")  [assignment]
+scripts/data_tools/daily_data_manager.py:416: error: Value of type "bool" is not indexable  [index]
+pipeline/context_builder.py:56: error: Incompatible default for argument "causal_rules_path" (default has type "None", argument has type "str")  [assignment]
+pipeline/context_builder.py:56: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+pipeline/context_builder.py:56: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+pipeline/context_builder.py:332: error: Incompatible default for argument "causal_rules_path" (default has type "None", argument has type "str")  [assignment]
+pipeline/context_builder.py:332: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+pipeline/context_builder.py:332: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+src/analysis/dlime_explainer.py:36: error: Need type annotation for "local_models" (hint: "local_models: dict[<type>, <type>] = ...")  [var-annotated]
+src/analysis/dlime_explainer.py:39: error: Need type annotation for "cluster_centers" (hint: "cluster_centers: dict[<type>, <type>] = ...")  [var-annotated]
+src/analysis/dlime_explainer.py:40: error: Need type annotation for "clusters_X"  [var-annotated]
+src/analysis/dlime_explainer.py:41: error: Need type annotation for "clusters_y"  [var-annotated]
+src/analysis/dlime_explainer.py:124: error: Need type annotation for "feat_name"  [var-annotated]
+src/analysis/dlime_explainer.py:124: error: Argument 1 to "enumerate" has incompatible type "None"; expected "Iterable[Never]"  [arg-type]
+pipeline/ml_predictor.py:68: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+pipeline/ml_predictor.py:69: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+pipeline/ml_predictor.py:378: error: Module has no attribute "get_limits"  [attr-defined]
+src/analysis/risk_scorer.py:30: error: Incompatible types in assignment (expression has type "None", variable has type "MLPredictor")  [assignment]
+src/analysis/risk_scorer.py:115: error: Need type annotation for "reasons" (hint: "reasons: list[<type>] = ...")  [var-annotated]
+src/analysis/risk_scorer.py:202: error: Incompatible types in assignment (expression has type "TrendSignal", variable has type "ThresholdSignal")  [assignment]
+src/analysis/risk_scorer.py:203: error: "ThresholdSignal" has no attribute "eta_minutes"  [attr-defined]
+src/analysis/risk_scorer.py:204: error: "ThresholdSignal" has no attribute "r_squared"  [attr-defined]
+src/analysis/risk_scorer.py:206: error: "ThresholdSignal" has no attribute "eta_minutes"  [attr-defined]
+src/analysis/risk_scorer.py:207: error: "ThresholdSignal" has no attribute "eta_minutes"  [attr-defined]
+pipeline/llm_engine.py:214: error: Incompatible default for argument "api_key" (default has type "None", argument has type "str")  [assignment]
+pipeline/llm_engine.py:214: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+pipeline/llm_engine.py:214: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+pipeline/llm_engine.py:263: error: Item "None" of "Client | None" has no attribute "models"  [union-attr]
+pipeline/llm_engine.py:272: error: Item "None" of "str | Any | None" has no attribute "strip"  [union-attr]
+src/app/hpr_monitor.py:21: error: Library stubs not installed for "yaml"  [import-untyped]
+src/app/hpr_monitor.py:21: note: Hint: "python3 -m pip install types-PyYAML"
+src/app/hpr_monitor.py:21: note: (or run "mypy --install-types" to install all missing stub packages)
+src/app/hpr_monitor.py:21: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+src/app/hpr_monitor.py:51: error: Name "_ml_predictor" already defined (possibly by an import)  [no-redef]
+src/app/hpr_monitor.py:62: error: Name "_usta" already defined on line 59  [no-redef]
+Found 29 errors in 8 files (checked 1 source file)

@@ -78,8 +78,13 @@ function buildCardHTML(machine) {
 
   // Causal Teşhis Badge'leri
   const diagHTML = (machine.diagnoses || []).map(d => {
-    const info = DIAGNOSIS_NAMES[d.rule] || {icon: '🔍', label: d.rule};
-    return `<span class="diag-badge" title="${d.explanation_tr}">${info.icon} ${info.label} <small>+${d.risk_add}</small></span>`;
+    // Yeni sistemde rule doğrudan okunaklı isim olarak geliyor (örn: "Testere Bicak Korelmesi")
+    let icon = '🔍';
+    if(d.rule.toLowerCase().includes('isi') || d.rule.toLowerCase().includes('sicak')) icon = '🌡️';
+    if(d.rule.toLowerCase().includes('testere') || d.rule.toLowerCase().includes('korelme')) icon = '⚡';
+    if(d.rule.toLowerCase().includes('basinc')) icon = '💨';
+    
+    return `<span class="diag-badge" title="${d.explanation_tr}">${icon} ${d.rule}</span>`;
   }).join('');
   const diagSection = diagHTML
     ? `<div class="diag-section"><span class="diag-title">🩺 Aktif Teşhis</span>${diagHTML}</div>`

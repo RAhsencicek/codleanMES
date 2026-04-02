@@ -1,25 +1,32 @@
-{
-  "feature_names": [
-    "main_pressure__fault_count",
-    "main_pressure__value_mean",
-    "main_pressure__value_max",
-    "main_pressure__over_ratio",
-    "horizontal_press_pressure__fault_count",
-    "horizontal_press_pressure__value_mean",
-    "horizontal_press_pressure__value_max",
-    "horizontal_press_pressure__over_ratio"
-  ],
-  "n_features": 8,
-  "sensors": [
-    "oil_tank_temperature",
-    "main_pressure",
-    "horizontal_press_pressure",
-    "lower_ejector_pressure",
-    "horitzonal_infeed_speed",
-    "vertical_infeed_speed"
-  ],
-  "pre_fault_mins": 60,
-  "time_window_min": 10,
-  "model_name": "XGBoost",
-  "generated_at": "2026-03-23T17:56:09.883899"
-}
+[
+  "oil_tank_temperature_mean",
+  "oil_tank_temperature_max",
+  "oil_tank_temperature_std",
+  "oil_tank_temperature_slope",
+  "oil_tank_temperature_volatility",
+  "main_pressure_mean",
+  "main_pressure_max",
+  "main_pressure_std",
+  "main_pressure_slope",
+  "main_pressure_volatility",
+  "horizontal_press_pressure_mean",
+  "horizontal_press_pressure_max",
+  "horizontal_press_pressure_std",
+  "horizontal_press_pressure_slope",
+  "horizontal_press_pressure_volatility",
+  "lower_ejector_pressure_mean",
+  "lower_ejector_pressure_max",
+  "lower_ejector_pressure_std",
+  "lower_ejector_pressure_slope",
+  "lower_ejector_pressure_volatility",
+  "horitzonal_infeed_speed_mean",
+  "horitzonal_infeed_speed_max",
+  "horitzonal_infeed_speed_std",
+  "horitzonal_infeed_speed_slope",
+  "horitzonal_infeed_speed_volatility",
+  "vertical_infeed_speed_mean",
+  "vertical_infeed_speed_max",
+  "vertical_infeed_speed_std",
+  "vertical_infeed_speed_slope",
+  "vertical_infeed_speed_volatility"
+]

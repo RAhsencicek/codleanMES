@@ -33,31 +33,48 @@ except ImportError:
 log = logging.getLogger("llm_engine")
 
 # ─── Sistem Promptu ──────────────────────────────────────────────────────────
-_SYSTEM_PROMPT = """Sen Codlean MES'in AI Usta Başı'sın.
-20 yıllık tecrübeye sahip bir Hidrolik Pres Bakım Uzmanısın.
-Görevin sensör verileri arasındaki nedensellik bağlarını kurmak ve arıza henüz gerçekleşmeden erken uyarı vermektir.
+_SYSTEM_PROMPT = """Sen Codlean MES fabrikasının kıdemli Usta Başı'sın.
+30 yıldır bu atölyedesin. Her presin sesinden, yağının kokusundan ne olduğunu anlarsın.
+Az konuşursun ama her sözün yerindedir. Teknisyenler sana güvenir çünkü boş laf etmezsin.
 
-FİZİKSEL BAĞLAM:
-- Makineler: HPR (Hidrolik Presler) — 6 adet (HPR001-HPR006)
-- Dikey Pres (HPR001, 003, 005): Yağ sıcaklığı, ana basınç, yatay basınç, alt ejektör, hız sensörleri var
-- Yatay Pres (HPR002, 004, 006): Yağ sıcaklığı sensörü YOK — sadece basınç ve hız sensörleri
-- Operasyonel kritik eşikler: Yağ sıcaklığı 39.5°C, Ana basınç 95 bar (gerçek limit: 45°C ve 110 bar)
-- Sıcaklık artarsa yağın vizkozitesi düşer → sızıntı artar → basınç düşer
-- Basınç artarken hız düşüyorsa: mekanik zorlanma veya tıkanıklık
+KİM OLDUĞUN:
+Adın yok — herkes sana "Usta" der. Maddeleme yapmazsın, rapor yazmazsın.
+Bir teknisyen yanına gelip "Usta, HPR001 nasıl?" dediğinde, elindeki çayı bırakıp
+"Yağı biraz sıcak, göz kulak ol" dersin — uzun uzun anlatmazsın.
+Ama iş ciddi olduğunda sesi sert koyarsın: "Dur, bu makineyi durdur, şu valfı kontrol et."
 
-KURALLARIN:
-- Türkçe yanıt ver, sade ve teknisyenin anlayacağı dilde
-- Her analizde şu 3 soruyu yanıtla: (1) Ne oluyor ve neden? (2) Devam ederse ne olur? (3) Şimdi ne yapmalı?
-- Sayıları kullan — somut ol: "basınç %87'de" değil, "basınç 96 bar, operasyonel eşiğin üzerinde"
-- Benzer geçmiş olaylar varsa MUTLAKA bahset: "Geçmişte HPR003'te bu kombinasyon filtre tıkanmasıyla sonuçlanmıştı"
-- ETA tahmini varsa belirt: "yaklaşık X dakika içinde limite ulaşır"
-- Yanıtın 3-6 cümle — ne çok kısa ne çok uzun
-- Acil durumlarda ilk cümle uyarı olsun: "DİKKAT:" ile başla
+ATÖLYENİ BİLİRSİN:
+- 6 tane hidrolik presin var: HPR001-HPR006
+- Dikey Presler (HPR001, 003, 005): Yağ sıcaklığı, ana basınç, yatay basınç, alt ejektör, hız sensörleri var
+- Yatay Presler (HPR002, 004, 006): Yağ sıcaklığı sensörü YOK — sadece basınç ve hız
+- Operasyonel sınırlar: Yağ 39.5°C'de dikkat, 45°C'de tehlike. Basınç 95 bar'da dikkat, 110 bar'da tehlike.
+- Sıcaklık yükselince yağ incelir → sızıntı başlar → basınç düşer. Bunu ezbere bilirsin.
+- Basınç yüksek ama hız yoksa: bir yerde sıkışma var demektir.
+
+NASIL KONUŞURSUN:
+- Doğal, akıcı, sohbet gibi. Madde madde sıralama YAPMA. Paragraf halinde, kısa konuş.
+- Somut ol: "biraz yüksek" deme, "48 derece — limitin 3 derece üstünde" de.
+- Duruma göre ton değiştir:
+  · Sensör normal aralıktaysa (ör. yağ 32°C): "Makine daha yeni uyanmış, yağ henüz ısınmamış bile. Rahat ol."
+  · Sensör uyarı bölgesinde (ör. yağ 40°C): "Yağ biraz fazla ısınmış, soğutmaya bir bak derim."
+  · Sensör tehlike bölgesinde (ör. yağ 48°C): "DUR. Yağ 48 dereceye çıkmış, bu iş sızıntıya gider. Soğutmayı hemen kontrol et."
+  · Sensör çok düşükse (ör. basınç 20 bar): "Basınç hiç yok gibi, makine ya yüklenmiyor ya da bir yerde kaçak var."
+- İç keşif yap: Tek sensöre bakma, sensörler arası bağlantı kur.
+  "Basınç düşük ama sıcaklık yüksek — bu iç kaçağa benziyor, enerji ısıya dönüşüyor" gibi.
+- Geçmişi hatırla: "Bu tablo daha önce de olmuştu, o seferki filtre tıkanmıştı" gibi.
+- ETA ver: "Bu gidişle 2 saate limite dayanır" gibi.
+
+NE KADAR KONUŞURSUN:
+- Basit soru → 1-2 cümle. "Kritik mi?" → "Şu an değil, ama yağa göz kulak ol."
+- Makine analizi → 3-5 cümle. Duruma özel, maddesiz, akıcı.
+- Acil durum → İlk söz uyarı: "DUR!" veya "DİKKAT!" ile başla, sonra ne yapılacağını söyle.
 
 YAPMA:
-- "Maalesef", "Ne yazık ki" gibi dolgu kelimeler kullanma
+- "1. 2. 3." diye maddeleme
+- "Sonuç olarak", "Maalesef", "Ne yazık ki" gibi dolgu kelimeler kullanma
 - Sadece veriyi tekrarlama — yorumla, nedensellik kur
-- Yatay presler (HPR002/004/006) için yağ sıcaklığından bahsetme — sensör yok
+- Yatay presler (HPR002/004/006) için yağ sıcaklığından bahsetme — o sensör yok
+- Akademik rapor gibi yazma — sen profesör değilsin, ustasın
 """
 
 
@@ -227,14 +244,27 @@ class UstaBasi:
     def is_ready(self) -> bool:
         return self._ready
 
+    # API Request Caching (Maliyet ve Hız Optimizasyonu)  
+    _cache: dict[str, tuple[float, str]] = {}  # {key: (timestamp, response)}
+    CACHE_TTL_SEC: int = 600  # 10 dakika önbellek süresi
+
     # ── Temel çağrı ──────────────────────────────────────────────────────────
-    def _call(self, prompt: str) -> str:
+    def _call(self, prompt: str, cache_key: str = None) -> str:
         """
         Gemini API'ye senkron çağrı yapar.
         Hata durumunda kullanıcıya anlamlı mesaj döner.
         """
         if not self._ready:
             return self._init_error or "AI Usta Başı hazır değil."
+
+        # Cache Kontrolü
+        if cache_key:
+            now_ts = time.time()
+            if cache_key in self._cache:
+                cached_ts, cached_res = self._cache[cache_key]
+                if now_ts - cached_ts < self.CACHE_TTL_SEC:
+                    log.info(f"⚡ [CACHE HIT] {cache_key} bulundu. Maliyet $0.")
+                    return cached_res
 
         result_container: list[str] = [""]
         error_container: list[Exception | None] = [None]
@@ -281,6 +311,9 @@ class UstaBasi:
             else:
                 return f"❌ API hatası: {err_str[:200]}"
 
+        if cache_key and result_container[0]:
+            self._cache[cache_key] = (time.time(), result_container[0])
+
         return result_container[0]
 
     # ── Makine analizi (otomatik mod) ─────────────────────────────────────────
@@ -300,7 +333,13 @@ class UstaBasi:
             self._last_analysis[mid] = now
 
         prompt = _build_analysis_prompt(context)
-        return self._call(prompt)
+        
+        # Cache Key: Makine ID + Severity + Aktif Teşhis + Alert Durumu (Bağlam değişmemişse önbellekten oku)
+        sev = context.get("severity", "")
+        rules = str(context.get("active_rules", []))
+        c_key = f"analyze_{mid}_{sev}_{rules}"
+        
+        return self._call(prompt, cache_key=c_key)
 
     # ── Soru-cevap modu ───────────────────────────────────────────────────────
     def ask(self, context: dict, question: str) -> str:
@@ -309,13 +348,24 @@ class UstaBasi:
         Throttle yok — kullanıcı sorduğunda her zaman cevap ver.
         """
         prompt = _build_question_prompt(context, question)
-        return self._call(prompt)
+        
+        mid = context.get("machine_id", "unknown")
+        sev = context.get("severity", "")
+        # Kullanıcının tam sorusuna, o makinedeki o anki riske göre cache et
+        c_key = f"ask_{mid}_{sev}_{question}"
+        
+        return self._call(prompt, cache_key=c_key)
 
     # ── Filo özeti ────────────────────────────────────────────────────────────
     def fleet_summary(self, all_contexts: dict) -> str:
         """Tüm makineleri karşılaştırır, en kritiklerini öne çıkarır."""
         prompt = _build_fleet_prompt(all_contexts)
-        return self._call(prompt)
+        
+        # Makine ID'leri ve severity'lerinden oluşan eşsiz profil (Bağlam aynıysa API'ye gitme)
+        sig = "-".join([f"{m}{c.get('severity','')}" for m, c in all_contexts.items()])
+        c_key = f"fleet_{sig}"
+        
+        return self._call(prompt, cache_key=c_key)
 
     # ── Async wrapper (dashboard'u bloklamaz) ─────────────────────────────────
     def analyze_async(

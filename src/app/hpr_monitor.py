@@ -16,6 +16,7 @@ import threading
 import time
 from collections import defaultdict
 from datetime import date, datetime
+from typing import Any, Dict, List, Optional, cast
 
 import yaml
 from confluent_kafka import Consumer, KafkaError
@@ -33,7 +34,9 @@ from scripts.data_tools.daily_data_manager import (
     update_daily_summary,
 )
 from src.alerts import alert_engine as alerter
-from src.analysis import risk_scorer as scorer
+from src.analysis.anomaly_detector import AnomalyDetector
+from src.analysis.context_builder import ContextBuilder
+from src.analysis.causal_evaluator import CausalEvaluator
 from src.analysis import threshold_checker as thresh
 from src.analysis import trend_detector as trend
 from src.core import data_validator as validator
@@ -47,7 +50,7 @@ try:
         True  # Import başarısı yeterli; is_active çalışma zamanında kontrol edilir
     )
 except Exception as _e:
-    _ml_predictor = None
+    _ml_predictor: Optional[Any] = None
     _ML_AVAILABLE = False
 
 # ─── AI Usta Başı (opsiyonel — API key yoksa gracefully degrade) ──────────────
@@ -58,7 +61,7 @@ try:
     _usta = get_usta()
     _USTA_AVAILABLE = _usta.is_ready
 except Exception as _ue:
-    _usta = None
+    _usta: Optional[Any] = None
     _USTA_AVAILABLE = False
 
 # Makine başına son AI analiz metni + üretim zamanı (bayatlama kontrolü için)
@@ -109,8 +112,11 @@ BOOL_RULES = CONFIG.get("boolean_rules", {})
 EWMA_ALPHA = CONFIG.get("ewma_alpha", {})
 PIPELINE = CONFIG.get("pipeline", {})
 CAUSAL_RULES_PATH = _os.path.join(
-    _ROOT, "docs", "causal_rules_v2.json"
+    _ROOT, "docs", "causal_rules.json"
 )  # v2: 10 altın kural — HPR tipi bazlı filtreleme
+
+causal_evaluator = CausalEvaluator(CAUSAL_RULES_PATH)
+
 KAFKA_CFG = CONFIG["kafka"]
 # Env var override — production ortamında YAML'ı değiştirmeye gerek yok
 if _os.environ.get("KAFKA_BOOTSTRAP_SERVERS"):
@@ -136,13 +142,13 @@ KEY_SENSORS = [
 ]
 
 # ─── State ───────────────────────────────────────────────────────────────────
-state = store.load_state()
-startup_state = {}
+state: Dict[str, Any] = store.load_state()
+startup_state: Dict[str, Any] = {}
 running = True
 
 # Smooth transition için previous values (UI flicker önleme)
-previous_values = defaultdict(lambda: {"sensors": {}, "risk_score": 0, "severity": ""})
-machine_data = defaultdict(
+previous_values: Dict[str, Dict[str, Any]] = defaultdict(lambda: {"sensors": {}, "risk_score": 0, "severity": ""})
+machine_data: Dict[str, Dict[str, Any]] = defaultdict(
     lambda: {
         "execution": "—",
         "sensors": {},
@@ -151,10 +157,12 @@ machine_data = defaultdict(
         "severity": "",
         "confidence": 0.0,
         "alert_count": 0,
-        "last_alerts": [],  # Son 3 alert
+        "last_alerts": cast(List[Any], []),  # Son 3 alert
         "trend_info": {},  # {sensor: slope_per_hour}
         "last_signal_ts": None,  # Zamana dayalı decay için
         "last_alert_source": "",  # "KURAL" | "ML" — dashboard kaynak ayrımı
+        "diagnosis": "",          # "Aktif Arıza Teşhisi" badge'i için (Kısa İsim)
+        "diagnosis_desc": "",     # Teşhis açıklaması
     }
 )
 
@@ -162,8 +170,8 @@ machine_data = defaultdict(
 for mid in HPR_MACHINES:
     _ = machine_data[mid]  # defaultdict otomatik başlatır
 
-stats = {"total": 0, "hpr_msgs": 0, "alerts": 0, "start": datetime.now()}
-_log_lines: list[str] = []
+stats: Dict[str, Any] = {"total": 0, "hpr_msgs": 0, "alerts": 0, "start": datetime.now()}
+_log_lines: List[tuple[str, str, str]] = []
 
 
 def add_log(msg: str, style: str = "white"):
@@ -430,15 +438,15 @@ def build_dashboard() -> Layout:
     )
 
     # Header
-    elapsed = datetime.now() - stats["start"]
+    elapsed = datetime.now() - cast(datetime, stats["start"])
     h, rem = divmod(int(elapsed.total_seconds()), 3600)
     m, s = divmod(rem, 60)
 
     header_text = Text(justify="center")
     header_text.append("🏭 CODLEAN MES - Arıza Tahmin Sistemi\n", style="bold cyan")
     header_text.append(
-        f"Mesaj: {stats['total']:,} | HPR: {stats['hpr_msgs']:,} | "
-        f"Alert: {stats['alerts']} | Süre: {h:02d}:{m:02d}:{s:02d}",
+        f"Mesaj: {cast(int, stats['total']):,} | HPR: {cast(int, stats['hpr_msgs']):,} | "
+        f"Alert: {cast(int, stats['alerts'])} | Süre: {h:02d}:{m:02d}:{s:02d}",
         style="dim white",
     )
     layout["header"].update(header_text)
@@ -501,7 +509,8 @@ def build_dashboard() -> Layout:
     log_text = Text()
     last_significant = None
 
-    for ts, msg, style in _log_lines[-6:]:
+    for log_entry in _log_lines[-6:]:
+        ts, msg, style = log_entry
         # Sadece alarm veya durum değişikliklerini göster
         if any(
             keyword in msg
@@ -566,7 +575,17 @@ def refresh_dashboard():
         # "makine henüz başlatıldı" diye yanlış analiz yapıyordu.
         md["operating_minutes"] = store.get_operating_minutes(state, mid)
         # ─────────────────────────────────────────────────────────────────
-
+        
+        # ── CAUSAL RULES DEĞERLENDİRME (SMART DASHBOARD TEŞHİSİ) ─────────
+        diag_name, diag_desc = causal_evaluator.evaluate(md)
+        md["diagnosis"] = diag_name
+        md["diagnosis_desc"] = diag_desc
+        
+        if mid not in state:
+            state[mid] = {}
+        state[mid]["diagnosis"] = diag_name
+        state[mid]["diagnosis_desc"] = diag_desc
+        # ─────────────────────────────────────────────────────────────────
 
 # ─── İşleme ──────────────────────────────────────────────────────────────────
 def process(raw: dict):
@@ -601,7 +620,7 @@ def process(raw: dict):
         if not mid.startswith("HPR"):
             continue
 
-        stats["hpr_msgs"] += 1
+        stats["hpr_msgs"] = cast(int, stats["hpr_msgs"]) + 1
         md = machine_data[mid]
 
         if "execution" in pkt["text"]:
@@ -673,8 +692,8 @@ def process(raw: dict):
                 md["last_alert_source"] = "KURAL"
 
                 if alerter.process_alert(event, min_score=20):
-                    stats["alerts"] += 1
-                    md["alert_count"] += 1
+                    stats["alerts"] = cast(int, stats["alerts"]) + 1
+                    md["alert_count"] = cast(int, md["alert_count"]) + 1
                     icon = "🚨" if event.severity == "KRİTİK" else "⚠️"
                     sev_style = {
                         "KRİTİK": "bold red",
@@ -788,6 +807,7 @@ def main():
         style="dim",
     )
 
+    last_state_save = time.time()
     with Live(
         build_dashboard(),
         refresh_per_second=REFRESH_PER_SECOND,
@@ -807,11 +827,16 @@ def main():
 
             try:
                 data = json.loads(msg.value())
-                stats["total"] += 1
+                stats["total"] = cast(int, stats["total"]) + 1
                 process(data)
 
                 # Her iterasyonda state'den makine verilerini yenile
                 refresh_dashboard()
+
+                now_time = time.time()
+                if now_time - last_state_save >= 3.0:
+                    store.save_state(state)
+                    last_state_save = now_time
 
                 live.update(build_dashboard())
             except Exception as e:

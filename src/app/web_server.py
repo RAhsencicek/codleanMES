@@ -206,6 +206,8 @@ def build_machines_payload() -> list:
     for mid in sorted(state.keys()):
         if not mid.startswith("HPR"):
             continue
+        if mid not in LIMITS:
+            continue
 
         ms = state[mid]
         means  = ms.get("ewma_mean",    {}) or {}
@@ -266,9 +268,10 @@ def build_machines_payload() -> list:
 
         sensors.sort(key=lambda x: x["pct"], reverse=True)
 
-        # Causal Rules Teşhis
-        op_min = ms.get("operating_minutes", 120) or 120
-        diagnoses = _evaluate_causal_rules(mid, means, op_min)
+        # Causal Rules Teşhis (hpr_monitor.py'nin CausalEvaluator çıktısı)
+        diag_name = ms.get("diagnosis", "")
+        diag_desc = ms.get("diagnosis_desc", "")
+        diagnoses = [{"rule": diag_name, "explanation_tr": diag_desc, "risk_add": ""}] if diag_name else []
 
         result.append({
             "id":        mid,

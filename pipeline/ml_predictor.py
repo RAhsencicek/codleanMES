@@ -119,7 +119,9 @@ class MLPredictor:
             from src.analysis.dlime_explainer import DLIMEExplainer
             
             self._shap_explainer = shap.TreeExplainer(self._model)
-            self._dlime_explainer = DLIMEExplainer(self._model, os.path.join(_DIR, "model", "ml_training_data.csv"))
+            # data/ dizinine taşıdığımız yeni dev veri setini (v2) göster
+            dataset_path = _local_os.path.join(root_dir, "data", "ml_training_data_v2.csv")
+            self._dlime_explainer = DLIMEExplainer(self._model, dataset_path)
             self._nlg_engine = CodleanNLGEngine()
             log.info("✅ XAI (SHAP/DLIME) ve NLG Motoru başarıyla yüklendi.")
         except Exception as e:
@@ -184,56 +186,50 @@ class MLPredictor:
         ewma_var    = state.get("ewma_var", {})
         sample_cnt  = state.get("sample_count", {})
 
+        from scipy import stats
         from datetime import datetime
         now = datetime.utcnow()
-
         feat: dict[str, float] = {}
 
-        # Sensör özellikler
-        active_sensors = 0
-        total_faults   = 0
-
         for sensor in HPR_SENSORS:
-            buf  = list(buffers.get(sensor, []))
-            mean = ewma_mean.get(sensor)
-            var  = ewma_var.get(sensor, 0.0)
-            std  = var ** 0.5 if var > 0 else 0.0
-            lim  = limits.get(sensor, {})
-            lim_max = lim.get("max", 9999)
-            lim_min = lim.get("min", -9999)
-
-            if not buf or mean is None:
-                feat[f"{sensor}__fault_count"] = 0
-                feat[f"{sensor}__value_mean"]  = 0.0
-                feat[f"{sensor}__value_std"]   = 0.0
-                feat[f"{sensor}__value_max"]   = 0.0
-                feat[f"{sensor}__over_ratio"]  = 0.0
+            buf = list(buffers.get(sensor, []))
+            
+            if not buf or len(buf) < 3:
+                feat[f"{sensor}_mean"] = 0.0
+                feat[f"{sensor}_max"] = 0.0
+                feat[f"{sensor}_std"] = 0.0
+                feat[f"{sensor}_slope"] = 0.0
+                feat[f"{sensor}_volatility"] = 0.0
                 continue
 
-            # Limit aşen değerleri say (son 30 ölçüm — trend penceresi)
-            recent = buf[-30:] if len(buf) >= 30 else buf
-            faults = [v for v in recent if v > lim_max or v < lim_min]
-            n_faults = len(faults)
-            if n_faults > 0:
-                active_sensors += 1
-                total_faults   += n_faults
+            # Son 10 dakika (her mesaj ~10s = ~60 mesaj eder)
+            recent = buf[-60:]
+            if len(recent) < 3:
+                # fallback
+                feat[f"{sensor}_mean"] = 0.0
+                feat[f"{sensor}_max"] = 0.0
+                feat[f"{sensor}_std"] = 0.0
+                feat[f"{sensor}_slope"] = 0.0
+                feat[f"{sensor}_volatility"] = 0.0
+                continue
 
-            # Tüm recent değerler üzerinden istatistik hesapla (fault olmasa bile).
-            # Bu, train_model.py'deki window feature hesaplamasıyla tutarlı.
             arr = np.array(recent, dtype=float)
+            mean_v = float(arr.mean())
+            std_v = float(arr.std())
+            max_v = float(arr.max())
+            
+            x = np.arange(len(arr))
+            slope, _, _, _, _ = stats.linregress(x, arr)
+            slope_p_min = slope * 6
+            volatility = float(std_v / mean_v) if mean_v != 0 else 0.0
+            
+            feat[f"{sensor}_mean"] = round(mean_v, 2)
+            feat[f"{sensor}_max"] = round(max_v, 2)
+            feat[f"{sensor}_std"] = round(std_v, 2)
+            feat[f"{sensor}_slope"] = round(slope_p_min, 4)
+            feat[f"{sensor}_volatility"] = round(volatility, 4)
 
-            feat[f"{sensor}__fault_count"] = n_faults
-            # Eğitimle uyum: value_mean/std/max tüm pencere üzerinden hesaplanır,
-            # sadece fault değerlerine değil. Bu train_model.py ile tutarlı.
-            feat[f"{sensor}__value_mean"]  = float(arr.mean()) if len(arr) > 0 else 0.0
-            feat[f"{sensor}__value_std"]   = float(arr.std())  if len(arr) > 1 else 0.0
-            feat[f"{sensor}__value_max"]   = float(arr.max())  if len(arr) > 0 else 0.0
-            feat[f"{sensor}__over_ratio"]  = float(arr.mean() / lim_max) if lim_max > 0 else 0.0
-
-        feat["active_sensors"]       = active_sensors
-        feat["multi_sensor_fault"]   = 1 if active_sensors >= 2 else 0
-        feat["total_faults_window"]  = total_faults
-        # hour_of_day / day_of_week kasıtlı olarak çıkarıldı (temporal leak)
+        # Eski leaky feature'lar sistemden tamamen çıkarıldı (active_sensors vb.)
 
         # Eğitim sırasındaki sütun sırasına hizala
         if self._feature_names:
