@@ -14,6 +14,9 @@ Her makine için geçmişi RAM'de tutar.
 from collections import deque, defaultdict
 from datetime import datetime
 import tempfile, os, json, logging, time
+import threading
+
+STATE_LOCK = threading.RLock()
 
 log = logging.getLogger("state_store")
 
@@ -40,10 +43,11 @@ def _new_machine_state(window: int = DEFAULT_WINDOW) -> dict:
 
 def ensure_machine(state: dict, machine_id: str, window: int = DEFAULT_WINDOW):
     """Makine henüz yoksa başlatır ve startup zamanını kaydeder."""
-    if machine_id not in state:
-        state[machine_id] = _new_machine_state(window)
-        state[machine_id]["startup_ts"] = time.time()
-        log.info("Yeni makine kaydedildi: %s (startup_ts ayarlandı)", machine_id)
+    with STATE_LOCK:
+        if machine_id not in state:
+            state[machine_id] = _new_machine_state(window)
+            state[machine_id]["startup_ts"] = time.time()
+            log.info("Yeni makine kaydedildi: %s (startup_ts ayarlandı)", machine_id)
 
 
 
@@ -89,23 +93,25 @@ def update_numeric(
     value=None → valid_count artmaz, buffer'a eklenmez.
     """
     ensure_machine(state, machine_id, window)
-    ms = state[machine_id]
+    
+    with STATE_LOCK:
+        ms = state[machine_id]
 
-    # Sayaçları artır
-    ms["sample_count"][sensor] = ms["sample_count"].get(sensor, 0) + 1
+        # Sayaçları artır
+        ms["sample_count"][sensor] = ms["sample_count"].get(sensor, 0) + 1
 
-    if value is None:
-        return  # Eksik veri — sadece say
+        if value is None:
+            return  # Eksik veri — sadece say
 
-    ms["valid_count"][sensor] = ms["valid_count"].get(sensor, 0) + 1
+        ms["valid_count"][sensor] = ms["valid_count"].get(sensor, 0) + 1
 
-    # Ring buffer
-    if sensor not in ms["buffers"]:
-        ms["buffers"][sensor] = deque(maxlen=ms["window"])
-    ms["buffers"][sensor].append(value)
+        # Ring buffer
+        if sensor not in ms["buffers"]:
+            ms["buffers"][sensor] = deque(maxlen=ms["window"])
+        ms["buffers"][sensor].append(value)
 
-    # EWMA
-    _update_ewma(ms, sensor, value, alpha)
+        # EWMA
+        _update_ewma(ms, sensor, value, alpha)
 
 
 # ─── Boolean sensör güncelleme ───────────────────────────────────────────────
@@ -123,30 +129,32 @@ def update_boolean(
     Dönüş: dakika cinsinden süre (kötü durumdaysa) | None (iyi durumda)
     """
     ensure_machine(state, machine_id)
-    ms = state[machine_id]
+    
+    with STATE_LOCK:
+        ms = state[machine_id]
 
-    if value is None:
-        return None
+        if value is None:
+            return None
 
-    # success_key'e göre "kötü" durumu belirle
-    is_bad = (value != success_key)
+        # success_key'e göre "kötü" durumu belirle
+        is_bad = (value != success_key)
 
-    now_str = datetime.utcnow().isoformat()
+        now_str = datetime.utcnow().isoformat()
 
-    if is_bad:
-        if ms["bool_active_since"].get(sensor) is None:
-            ms["bool_active_since"][sensor] = now_str  # Kötü durum başladı
-        since_str = ms["bool_active_since"][sensor]
-        try:
-            minutes = (
-                datetime.utcnow() - datetime.fromisoformat(since_str)
-            ).total_seconds() / 60
-            return round(minutes, 1)
-        except Exception:
-            return 0.0
-    else:
-        ms["bool_active_since"][sensor] = None  # İyi duruma döndü → sıfırla
-        return None
+        if is_bad:
+            if ms["bool_active_since"].get(sensor) is None:
+                ms["bool_active_since"][sensor] = now_str  # Kötü durum başladı
+            since_str = ms["bool_active_since"][sensor]
+            try:
+                minutes = (
+                    datetime.utcnow() - datetime.fromisoformat(since_str)
+                ).total_seconds() / 60
+                return round(minutes, 1)
+            except Exception:
+                return 0.0
+        else:
+            ms["bool_active_since"][sensor] = None  # İyi duruma döndü → sıfırla
+            return None
 
 
 # ─── Confidence skoru ────────────────────────────────────────────────────────
@@ -193,13 +201,14 @@ def get_ewma_stats(state: dict, machine_id: str, sensor: str) -> dict:
 # ─── Atomik JSON checkpoint ──────────────────────────────────────────────────
 
 def _make_serializable(state: dict) -> dict:
-    """deque → list dönüşümü (JSON için)."""
+    """deque → list dönüşümü (JSON için). RLock kullanır."""
     out = {}
-    for mid, ms in state.items():
-        out[mid] = dict(ms)
-        out[mid]["buffers"] = {
-            k: list(v) for k, v in ms.get("buffers", {}).items()
-        }
+    with STATE_LOCK:
+        for mid, ms in state.items():
+            out[mid] = dict(ms)
+            out[mid]["buffers"] = {
+                k: list(v) for k, v in ms.get("buffers", {}).items()
+            }
     return out
 
 

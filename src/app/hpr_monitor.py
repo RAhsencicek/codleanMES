@@ -561,10 +561,22 @@ def refresh_dashboard():
             for sensor, ewma_val in ms.get("ewma_mean", {}).items():
                 md["sensors"][sensor] = round(ewma_val, 1)
 
-            # Boolean sensörler - Kaç dakikadır aktif?
-            for sensor, bad_min in ms.get("bool_active_since", {}).items():
-                if isinstance(bad_min, (int, float)) and bad_min > 0:
-                    md["booleans"][sensor] = bad_min
+            # Boolean sensörler - Kaç dakikadır aktif? (ISO string çözümlemesi)
+            for sensor, bad_str in ms.get("bool_active_since", {}).items():
+                if not bad_str:
+                    continue
+                try:
+                    from datetime import datetime, timezone
+                    dt = datetime.fromisoformat(bad_str.replace("Z", "+00:00"))
+                    # utcnow yerine timezone-aware yapalım eğer Z varsa
+                    if dt.tzinfo is not None:
+                        bad_min = (datetime.now(timezone.utc) - dt).total_seconds() / 60
+                    else:
+                        bad_min = (datetime.utcnow() - dt).total_seconds() / 60
+                    if bad_min > 0:
+                        md["booleans"][sensor] = round(bad_min, 1)
+                except Exception:
+                    pass
 
             # Execution status
             if ms.get("last_execution"):
@@ -675,7 +687,7 @@ def process(raw: dict):
                 store.get_confidence(state, mid, s) for s in list(pkt["numeric"])[:5]
             ]
             avg_c = sum(confs) / len(confs) if confs else 0.1
-            event = scorer.calculate_risk(
+            event = risk_scorer.calculate_risk(
                 mid,
                 t_signals,
                 r_signals,
@@ -719,16 +731,20 @@ def process(raw: dict):
                         _usta.analyze_async(ctx, _cb, force=True)
         else:
             # ── Zamana dayalı decay ──────────────────────────────────────────
-            if md["last_signal_ts"] is not None and md["risk_score"] > 0:
-                elapsed_sec = (datetime.now() - md["last_signal_ts"]).total_seconds()
-                decay = min(elapsed_sec / 10.0, md["risk_score"])
-                md["risk_score"] = max(md["risk_score"] - decay, 0.0)
-                if md["risk_score"] == 0:
-                    md["last_signal_ts"] = None
-                    md["last_alert_source"] = ""
-                    md["severity"] = ""
-                else:
-                    md["last_signal_ts"] = datetime.now()
+            if md["risk_score"] > 0:
+                last_decay = md.get("last_decay_ts", md.get("last_signal_ts") or datetime.now())
+                elapsed_sec = (datetime.now() - last_decay).total_seconds()
+                # 60 saniyede ~5 puan düşecek şekilde ayarlayalım, sık güncellemede 0 engeli aşılır.
+                decay = (elapsed_sec / 60.0) * 5.0
+                
+                # Ufak adımları (spam) yoksaymak için sadece yeterince zaman geçince düşür.
+                if decay > 0.5:
+                    md["risk_score"] = max(md["risk_score"] - decay, 0.0)
+                    if md["risk_score"] == 0:
+                        md["last_signal_ts"] = None
+                        md["last_alert_source"] = ""
+                        md["severity"] = ""
+                    md["last_decay_ts"] = datetime.now()
 
             # ── ML PRE-FAULT YOLU: Kural sinyali yokken ML erken uyarı ──────
             # Sadece is_stale ve is_startup dışında çalışır.
@@ -834,7 +850,7 @@ def main():
                 refresh_dashboard()
 
                 now_time = time.time()
-                if now_time - last_state_save >= 3.0:
+                if now_time - last_state_save >= 300.0:
                     store.save_state(state)
                     last_state_save = now_time
 
