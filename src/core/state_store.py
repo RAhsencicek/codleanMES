@@ -246,5 +246,5 @@ def load_state(path: str = CHECKPOINT_PATH, window: int = DEFAULT_WINDOW) -> dic
         log.info("Checkpoint yüklendi (%s). %d makine.", saved.get("_saved_at"), len(machines))
         return machines
     except Exception as e:
-        log.error("Checkpoint yüklenemedi: %s → sıfırlıyorum", e)
+        log.exception("Checkpoint yüklenemedi: %s → sıfırlıyorum", e)
         return {}

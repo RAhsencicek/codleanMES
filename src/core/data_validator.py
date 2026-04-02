@@ -132,22 +132,27 @@ def safe_bool(value) -> bool | None:
         return None
 
 
-# ─── Schema doğrulama ────────────────────────────────────────────────────────
+# ─── Pydantic Schema doğrulama ───────────────────────────────────────────────
+from pydantic import BaseModel, Field, ValidationError
+from typing import Optional, List, Dict, Any
 
+class KafkaHeader(BaseModel):
+    sender: str
+    creationTime: str
+    uuid: Optional[str] = None
+
+class KafkaMessage(BaseModel):
+    header: KafkaHeader
+    streams: List[Dict[str, Any]] = Field(min_length=1)
 
 def validate_schema(data: dict) -> bool:
-    """Zorunlu alanlar var mı kontrol eder."""
-    header = data.get("header", {})
-    if "sender" not in header:
-        log.warning("SCHEMA_ERROR: header.sender eksik")
+    """Pydantic kullanarak Kafka mesajının donanımsal zırh kontrolünü yapar."""
+    try:
+        KafkaMessage(**data)
+        return True
+    except ValidationError as e:
+        log.warning("SCHEMA_ERROR: Pydantic validasyonu reddetti: %s", str(e).replace('\n', ' '))
         return False
-    if "creationTime" not in header:
-        log.warning("SCHEMA_ERROR: header.creationTime eksik")
-        return False
-    if not data.get("streams"):
-        log.debug("SCHEMA_ERROR: streams boş")
-        return False
-    return True
 
 
 # ─── Stale veri kontrolü ─────────────────────────────────────────────────────

@@ -235,10 +235,10 @@ class UstaBasi:
             log.info(f"[LLM_INIT] ✅ AI Usta Başı hazır ({model_name})")
         except ImportError:
             self._init_error = "google-generativeai kütüphanesi kurulu değil. 'pip install google-genai' çalıştırın."
-            log.error(f"[LLM_INIT] {self._init_error}")
+            log.exception(f"[LLM_INIT] {self._init_error}")
         except Exception as e:
             self._init_error = f"Gemini başlatılamadı: {e}"
-            log.error(f"[LLM_INIT] {self._init_error}")
+            log.exception(f"[LLM_INIT] {self._init_error}")
 
     @property
     def is_ready(self) -> bool:
@@ -300,7 +300,7 @@ class UstaBasi:
         if error_container[0] is not None:
             err = error_container[0]
             err_str = str(err)
-            log.error("Gemini API hatası: %s", err_str)
+            log.exception("Gemini API hatası: %s", err_str)
 
             if "quota" in err_str.lower() or "429" in err_str:
                 return "🚫 API kotası doldu. Lütfen birkaç dakika sonra tekrar deneyin."

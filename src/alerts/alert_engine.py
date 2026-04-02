@@ -565,7 +565,7 @@ def process_hybrid_alert(
         else:
             print(format_hybrid_alert_plain(alert))
     except Exception as e:
-        log.error("Alert formatting hatası: %s", e)
+        log.exception("Alert formatting hatası: %s", e)
         print(format_hybrid_alert_plain(alert))
     
     return True

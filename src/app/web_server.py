@@ -182,21 +182,42 @@ def _get_kafka_lag() -> dict:
     except Exception:
         return {"lag_seconds": -1, "level": "BİLİNMİYOR", "last_update": "—"}
 
-# ─── State okuma yardımcıları ─────────────────────────────────────────────────
+# ─── State okuma yardımcıları (I/O Optimized) ──────────────────────────────
+_state_cache = {"mtime": 0.0, "data": {}}
+_context_cache = {"mtime": 0.0, "data": {}}
+
 def read_state() -> dict:
+    """Disk I/O optimize edilmiş state okuması (mtime control)"""
     try:
-        with open(STATE_PATH) as f:
-            raw = json.load(f)
-        return raw.get("machines", {})
-    except Exception:
-        return {}
+        if not os.path.exists(STATE_PATH):
+            return {}
+        mtime = os.path.getmtime(STATE_PATH)
+        if mtime > _state_cache["mtime"]:
+            with open(STATE_PATH) as f:
+                raw = json.load(f)
+            _state_cache["data"] = raw.get("machines", {})
+            _state_cache["mtime"] = mtime
+        return _state_cache["data"]
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).exception("State okuma hatası:")
+        return _state_cache["data"]
 
 def read_context() -> dict:
+    """Disk I/O optimize edilmiş context okuması (mtime control)"""
     try:
-        with open(CONTEXT_PATH) as f:
-            return json.load(f)
-    except Exception:
-        return {}
+        if not os.path.exists(CONTEXT_PATH):
+            return {}
+        mtime = os.path.getmtime(CONTEXT_PATH)
+        if mtime > _context_cache["mtime"]:
+            with open(CONTEXT_PATH) as f:
+                _context_cache["data"] = json.load(f)
+            _context_cache["mtime"] = mtime
+        return _context_cache["data"]
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).exception("Context okuma hatası:")
+        return _context_cache["data"]
 
 # ─── Makine payload ───────────────────────────────────────────────────────────
 def build_machines_payload() -> list:

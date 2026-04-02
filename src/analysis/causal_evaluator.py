@@ -12,7 +12,7 @@ class CausalEvaluator:
                 data = json.load(f)
                 self.rules = data.get("rules", {})
         except Exception as e:
-            log.error(f"Causal kuralları %s okunamadı: %s", rules_path, e)
+            log.exception(f"Causal kuralları %s okunamadı: %s", rules_path, e)
 
     def evaluate(self, machine_data: Dict[str, Any]) -> Tuple[str, str]:
         """

@@ -50,7 +50,7 @@ class HistoricalDataFeeder:
             log.info(f"HistoricalDataFeeder loaded {len(self.events)} sorted events from {self.file_path}")
             
         except Exception as e:
-            log.error(f"Failed to load historical data from {self.file_path}: {e}")
+            log.exception(f"Failed to load historical data from {self.file_path}: {e}")
             raise
             
     def get_next_tick(self, batch_size: int = 5):

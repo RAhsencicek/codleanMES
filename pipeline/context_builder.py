@@ -297,7 +297,8 @@ def build(
     try:
         from src.analysis.similarity_engine import SimilarityEngine
         import os
-        v_path = os.path.join(os.path.dirname(__file__), "..", "data", "ml_training_data_v2.csv")
+        from src.core.constants import ML_TRAINING_DATA_V2_PATH
+        v_path = ML_TRAINING_DATA_V2_PATH
         sim_engine = SimilarityEngine(v_path)
         
         live_features = md.get("last_ml_features", {})

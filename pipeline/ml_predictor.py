@@ -86,7 +86,7 @@ class MLPredictor:
                 self._model = pickle.load(f)
             log.info("✅ ML model yüklendi: %s", MODEL_PKL)
         except Exception as e:
-            log.error("Model yüklenemedi: %s", e)
+            log.exception("Model yüklenemedi: %s", e)
             return
 
         if os.path.exists(FEATURE_JSON):
@@ -121,10 +121,11 @@ class MLPredictor:
                 
             from src.analysis.nlg_engine import CodleanNLGEngine
             from src.analysis.dlime_explainer import DLIMEExplainer
+            from src.core.constants import ML_TRAINING_DATA_V2_PATH
             
             self._shap_explainer = shap.TreeExplainer(self._model)
             # data/ dizinine taşıdığımız yeni dev veri setini (v2) göster
-            dataset_path = _local_os.path.join(root_dir, "data", "ml_training_data_v2.csv")
+            dataset_path = ML_TRAINING_DATA_V2_PATH
             self._dlime_explainer = DLIMEExplainer(self._model, dataset_path)
             self._nlg_engine = CodleanNLGEngine()
             log.info("✅ XAI (SHAP/DLIME) ve NLG Motoru başarıyla yüklendi.")
@@ -318,7 +319,7 @@ class MLPredictor:
                         # Hangi XAI'ın kullanıldığını nota ekle (debugging için)
                         explanation = f"[{used_explainer}] " + nlg_exp
                 except Exception as e:
-                    log.error("SHAP/DLIME NLG hata: %s", e)
+                    log.exception("SHAP/DLIME NLG hata: %s", e)
                     import traceback
                     traceback.print_exc()
 

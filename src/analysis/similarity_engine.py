@@ -13,6 +13,7 @@ sorusuna istatistiksel yanıt üretir.
 import os
 import pandas as pd
 import numpy as np
+from src.core.constants import ML_TRAINING_DATA_V2_PATH
 import logging
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import StandardScaler
@@ -22,7 +23,7 @@ log = logging.getLogger("similarity_engine")
 class SimilarityEngine:
     _instance = None
     
-    def __new__(cls, dataset_path="data/ml_training_data_v2.csv"):
+    def __new__(cls, dataset_path=ML_TRAINING_DATA_V2_PATH):
         if cls._instance is None:
             cls._instance = super(SimilarityEngine, cls).__new__(cls)
             cls._instance._df = None
@@ -58,7 +59,7 @@ class SimilarityEngine:
             log.info("✅ SimilarityEngine hazır. %d satır, %d özellik geçmiş hafızaya alındı.", len(df), len(self._feature_cols))
             
         except Exception as e:
-            log.error("SimilarityEngine yükleme hatası: %s", e)
+            log.exception("SimilarityEngine yükleme hatası: %s", e)
 
     def find_similar_events(self, live_features: dict, current_machine_id: str, top_k: int = 3) -> str:
         """
