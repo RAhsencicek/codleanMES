@@ -196,6 +196,10 @@ class MLPredictor:
         now = datetime.utcnow()
         feat: dict[str, float] = {}
 
+        # Zaman Serisi (Temporal) Bağlamı
+        feat["hour_of_day"] = float(now.hour)
+        feat["month_of_year"] = float(now.month)
+
         for sensor in HPR_SENSORS:
             buf = list(buffers.get(sensor, []))
             

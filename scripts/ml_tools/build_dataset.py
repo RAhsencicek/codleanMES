@@ -164,6 +164,8 @@ def main():
             row = {
                 "machine_id": mid,
                 "timestamp": dt.isoformat(),
+                "hour_of_day": dt.hour,
+                "month_of_year": dt.month,
                 "label": label,
                 "binary_label": binary_label
             }

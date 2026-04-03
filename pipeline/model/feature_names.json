@@ -1,4 +1,6 @@
 [
+  "hour_of_day",
+  "month_of_year",
   "oil_tank_temperature_mean",
   "oil_tank_temperature_max",
   "oil_tank_temperature_std",
