@@ -32,6 +32,7 @@ Hangi Makine ID'leri Oluşturulur:
         --typefile downloads/machinetypedataitems.csv \\
         --machinefile downloads/machinedataitems.csv \\
         --machines HPR001,HPR002,HPR003,HPR004,HPR005,HPR006 \\
+        --hpr-yatay HPR002,HPR006 \\
         --tst-machines TST001,TST002,TST003,TST004 \\
         --output config/limits_config.yaml \\
         --dry-run
@@ -385,6 +386,11 @@ def main():
         help="Fiziksel HPR makine ID'leri virgülle ayrılmış (varsayılan: HPR001-HPR006)",
     )
     parser.add_argument(
+        "--hpr-yatay",
+        default="HPR002,HPR006",
+        help="Yatay Pres olan HPR ID'leri (virgülle ayrılmış). (varsayılan: HPR002,HPR006)",
+    )
+    parser.add_argument(
         "--tst-machines",
         default="TST001,TST002,TST003,TST004",
         help="Testere makine ID'leri (varsayılan: TST001-TST004)",
@@ -424,26 +430,20 @@ def main():
     dikey_pres_sensors = type_limits.get("Dikey Pres", {})
     yatay_pres_sensors = type_limits.get("Yatay Pres", {})
 
+    # Yatay Presleri ayır
+    yatay_pres_ids = [m.strip() for m in args.hpr_yatay.split(",") if m.strip()]
+
     for mid in args.machines.split(","):
         mid = mid.strip()
         if not mid:
             continue
-        # Makine bazlı override varsa hangi tipe ait olduğunu bul
-        if mid in machine_overrides:
-            # Override'daki veritabanı bilgisinden tip alınabilir
-            # Şimdilik naming convention'a güven
-            pass
-
-        # Yatay Pres tespiti: DB'de sadece 2 sensörü var
-        # HPR002 ve HPR006 bunlar (naming convention + sensör sayısı)
-        # Pratikte fabrika ekibi hangi HPR'nin yatay hangisinin dikey olduğunu bilir
-        # Bu bilgiyi CLI parametresiyle almak daha sağlıklı
-        # Şimdilik basit heuristik: eğer makineye özel override varsa bakarız,
-        # yoksa tüm HPR'ler için Dikey Pres varsayımı
-        machine_map[mid] = "Dikey Pres"
-        print(
-            f"    {mid} → Dikey Pres (varsayılan; --hpr-yatay parametresiyle değiştirilebilir)"
-        )
+            
+        if mid in yatay_pres_ids:
+            machine_map[mid] = "Yatay Pres"
+            print(f"    {mid} → Yatay Pres")
+        else:
+            machine_map[mid] = "Dikey Pres"
+            print(f"    {mid} → Dikey Pres")
 
     for mid in args.tst_machines.split(","):
         mid = mid.strip()
