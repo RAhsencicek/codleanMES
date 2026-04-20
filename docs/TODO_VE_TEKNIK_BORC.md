@@ -74,12 +74,16 @@ Detay için: `docs/pipeline_mimarisi.md`
 | F5-1 | `context_builder.py` — `enriched_sensors` eklendi, hydraulic_strain + cold_startup_mask artık tetikleniyor | 2026-03-24 |
 | F5-2 | `limits_config.yaml` boolean_rules — IK veritabanından `true_label`/`false_label`/`description` eklendi | 2026-03-24 |
 | F5-3 | `scripts/data_tools/sync_limits_from_db.py` oluşturuldu | 2026-03-24 |
+| P2-2 | `state_store.py` thread lock (`RLock`) teyit edildi | 2026-04-20 |
+| P2-3 | `context_collector.py` JSONL Append-only I/O optimizasyonu eklendi | 2026-04-20 |
+| F5-3b| `sync_limits_from_db.py` Yatay/Dikey pres `--hpr-yatay` ayrımı kodlandı | 2026-04-20 |
+| ML   | Sızdırmaz özellik mühendisliği bitti, joblib modeli üretildi | 2026-04-20 |
 
 ---
 
-### ⬜ F5-3b — Sync Script HPR Yatay/Dikey Ayrımı
+### ✅ F5-3b — Sync Script HPR Yatay/Dikey Ayrımı
 
-**Durum:** ⬜ Yapılmadı
+**Durum:** ✅ Tamamlandı (2026-04-20)
 **Süre:** ~20 dakika
 **Dosya:** `scripts/data_tools/sync_limits_from_db.py`
 
@@ -137,9 +141,9 @@ Boolean sensör süresi için `enriched_sensors`'a `{sensör_adı}_minutes` şek
 
 ---
 
-### ⬜ P2-2 — State Store Thread Lock
+### ✅ P2-2 — State Store Thread Lock
 
-**Durum:** ⬜ İzlemede — Yüksek mesaj hızında ele al
+**Durum:** ✅ Tamamlandı (Hali hazırda `RLock` ile korunuyor)
 **Dosya:** `src/core/state_store.py`
 
 **Problem:**
@@ -161,9 +165,9 @@ def save_state(state, ...):
 
 ---
 
-### ⬜ P2-3 — context_collector.py Büyük Dosya I/O
+### ✅ P2-3 — context_collector.py Büyük Dosya I/O
 
-**Durum:** ⬜ Beklemede — dosya 50 MB+ olunca ele al
+**Durum:** ✅ Tamamlandı (2026-04-20 - JSONL formatına geçildi)
 
 **Problem:**
 `rich_context_windows.json` her 5 dakikada tamamen yeniden yazılıyor. Dosya büyüdükçe bu disk I/O yükü olur.
