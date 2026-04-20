@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import pandas as pd
 import numpy as np
-import pickle
+import joblib
 import os
 import json
 from sklearn.ensemble import RandomForestClassifier
@@ -90,8 +90,11 @@ def main():
     print("\n💾 Model Kaydediliyor...")
     os.makedirs(MODEL_DIR, exist_ok=True)
     
-    with open(os.path.join(MODEL_DIR, "model.pkl"), "wb") as f:
-        pickle.dump(rf, f)
+    joblib_path = os.path.join(MODEL_DIR, "model.joblib")
+    joblib.dump(rf, joblib_path)
+    # Eski pickle dosyasını sil (varsa) karışıklık olmaması için
+    if os.path.exists(os.path.join(MODEL_DIR, "model.pkl")):
+        os.remove(os.path.join(MODEL_DIR, "model.pkl"))
         
     with open(os.path.join(MODEL_DIR, "feature_names.json"), "w") as f:
         json.dump(feature_cols, f, indent=2)

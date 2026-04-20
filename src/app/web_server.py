@@ -251,6 +251,9 @@ def build_machines_payload() -> list:
             if val is None:
                 continue
             lim     = lims.get(skey, {})
+            if not lim:
+                continue
+                
             max_l   = lim.get("max")
             warn_l  = lim.get("warn_level")
 

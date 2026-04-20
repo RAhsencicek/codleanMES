@@ -57,7 +57,8 @@ echo ""
 LOG_FILE="logs/hpr_monitor_$(date +%Y%m%d_%H%M%S).log"
 
 # Arka planda çalıştır
-PYTHONPATH=. nohup python3 src/app/hpr_monitor.py > "$LOG_FILE" 2>&1 &
+export PYTHONPATH=. # PYTHONPATH'i nohup'tan önce ayarla
+nohup python3 src/app/hpr_monitor.py > "$LOG_FILE" 2>&1 &
 PID=$!
 
 # PID kaydet

@@ -14,7 +14,7 @@ Kullanım (risk_scorer.py içinden):
 
 import os
 import json
-import pickle
+import joblib
 import logging
 import warnings
 from dataclasses import dataclass, field
@@ -27,7 +27,7 @@ log = logging.getLogger("ml_predictor")
 
 # ─── Model dosya yolları ─────────────────────────────────────────────────────
 _DIR          = os.path.dirname(os.path.abspath(__file__))
-MODEL_PKL     = os.path.join(_DIR, "model", "model.pkl")
+MODEL_PKL     = os.path.join(_DIR, "model", "model.joblib")
 FEATURE_JSON  = os.path.join(_DIR, "model", "feature_names.json")
 
 # ─── violation_log'dan öğrenilen sensör sırası ───────────────────────────────
@@ -76,14 +76,19 @@ class MLPredictor:
     # ─── Yükleme ─────────────────────────────────────────────────────────────
 
     def _load(self):
+        # Eğer hala eski .pkl dosyası varsa ve .joblib yoksa kullanıcıyı uyar
+        legacy_pkl = os.path.join(_DIR, "model", "model.pkl")
+        if not os.path.exists(MODEL_PKL) and os.path.exists(legacy_pkl):
+            log.error("Eski 'model.pkl' bulundu ancak güvenli 'model.joblib' yok! Lütfen modeli yeniden eğitin.")
+            return
+
         if not os.path.exists(MODEL_PKL):
             log.warning("ML model dosyası bulunamadı: %s", MODEL_PKL)
             log.warning("  → Önce 'python3 train_model.py' çalıştırın.")
             return
 
         try:
-            with open(MODEL_PKL, "rb") as f:
-                self._model = pickle.load(f)
+            self._model = joblib.load(MODEL_PKL)
             log.info("✅ ML model yüklendi: %s", MODEL_PKL)
         except Exception as e:
             log.exception("Model yüklenemedi: %s", e)
