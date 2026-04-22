@@ -270,11 +270,11 @@ PYTHONPATH=. python3 src/app/hpr_monitor.py
 | `src/app/hpr_monitor.py` | Ana uygulama — buradan başlatılır |
 | `config/limits_config.yaml` | Tüm makine limitleri ve sistem ayarları |
 | `docs/causal_rules.json` | Fizik tabanlı bağlam kuralları |
-| `pipeline/model/model.pkl` | Eğitilmiş ML modeli |
+| `pipeline/model/model.joblib` | Eğitilmiş ML modeli (joblib formatı) |
 | `pipeline/model/feature_names.json` | Eğitimdeki özellik listesi |
 | `state.json` | 5 dk checkpoint — silme |
 | `live_windows.json` | Basit veri penceresi (window_collector) |
-| `rich_context_windows.json` | Zengin bağlam penceresi (context_collector) |
+| `rich_context_windows.jsonl` | Zengin bağlam penceresi (context_collector, JSONL) |
 | `.env` | Gerçek API key ve IP'ler — git'e girmiyor |
 | `.env.example` | .env şablonu — git'e giriyor |
 
@@ -309,7 +309,7 @@ HPR002 ve HPR006 Yatay Pres — bunları ayrıca kontrol et (F5-3b tamamlanana k
 | `FileNotFoundError: limits_config.yaml` | Yanlış dizindesin | `cd kafka/` sonra çalıştır |
 | `KafkaException: broker not available` | VPN bağlı değil | VPN'e bağlan, `.env`'i kontrol et |
 | `GEMINI_API_KEY tanımlı değil` | Env var eksik | `.env.example`'dan `.env` oluştur, key ekle |
-| `model.pkl bulunamadı` | Model eğitilmemiş | `PYTHONPATH=. python3 scripts/ml_tools/train_model.py` |
+| `model.joblib bulunamadı` | Model eğitilmemiş | `PYTHONPATH=. python3 scripts/ml_tools/train_new_model.py` |
 
 ### Commit Mesaj Formatı
 

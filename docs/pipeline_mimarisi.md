@@ -128,7 +128,7 @@ Kafka Broker (mqtt-topic-v2, 10.71.120.10:7001)
 | `config/limits_config.yaml` | Makine limitleri, EWMA, pipeline parametreleri | `sync_limits_from_db.py` veya elle |
 | `docs/causal_rules.json` | Fizik tabanlı bağlam kuralları | Elle — bakım müh. girdisiyle |
 | `.env` | API key, Kafka IP (git'e girmiyor) | Elle — `.env.example`'dan kopyala |
-| `pipeline/model/model.pkl` | Eğitilmiş ML modeli | `train_model.py` çalıştırınca güncellenir |
+| `pipeline/model/model.joblib` | Eğitilmiş ML modeli (joblib) | `train_new_model.py` çalıştırınca güncellenir |
 
 ---
 
@@ -153,7 +153,7 @@ Kafka Broker (mqtt-topic-v2, 10.71.120.10:7001)
 |-------|----------------|------------------|
 | `state.json` | ~1-2 MB sabit | Silme — sistem hafızası |
 | `live_windows.json` | Yavaş büyür | Eğitimden sonra arşivlenebilir |
-| `rich_context_windows.json` | 30 günde ~50-75 MB | ML eğitimi sonrası arşivle |
+| `rich_context_windows.jsonl` | Append-only, sabit I/O | ML eğitimi sonrası arşivle |
 | `logs/` | Günlük rotasyon | 7 gün sonra silinebilir |
 
 ---
