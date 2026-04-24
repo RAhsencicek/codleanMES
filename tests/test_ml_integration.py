@@ -235,7 +235,7 @@ def test_alert_throttle():
     print("\n" + "─"*55)
     print("  TEST 5: Alert Throttle (30 dk)") 
     print("─"*55)
-    from risk_scorer import RiskEvent
+    from src.analysis.risk_scorer import RiskEvent
     from datetime import datetime as dt
 
     alerter._last_alert.clear()

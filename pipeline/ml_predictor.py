@@ -197,8 +197,8 @@ class MLPredictor:
         sample_cnt  = state.get("sample_count", {})
 
         from scipy import stats
-        from datetime import datetime
-        now = datetime.utcnow()
+        from datetime import datetime, UTC
+        now = datetime.now(UTC)
         feat: dict[str, float] = {}
 
         # Zaman Serisi (Temporal) Bağlamı

@@ -42,7 +42,7 @@ def test_rule_based_fault():
     print("TEST 1: Rule-Based Fault Detection (KESİN)")
     print("="*55)
     
-    from alert_engine import detect_faults_direct
+    from src.alerts.alert_engine import detect_faults_direct
     
     # Senaryo: HPR001, main_pressure limit aşımı
     sensor_values = {
@@ -70,7 +70,7 @@ def test_ml_pre_fault():
     print("TEST 2: ML Pre-Fault Prediction (OLASI)")
     print("="*55)
     
-    from alert_engine import predict_pre_fault_direct
+    from src.alerts.alert_engine import predict_pre_fault_direct
     
     # Senaryo: HPR002, normal değerler ama ML anormallik algılıyor
     sensor_values = {
@@ -111,7 +111,7 @@ def test_hybrid_alert_generation():
     print("TEST 3: Hybrid Alert Generation (FULL PIPELINE)")
     print("="*55)
     
-    from alert_engine import generate_hybrid_alert
+    from src.alerts.alert_engine import generate_hybrid_alert
     
     # Senaryo A: FAULT var (rule-based öncelikli)
     print("\n┌─ SENARYO A: FAULT + PRE-FAULT (hangisi öncelikli?)")
@@ -172,7 +172,7 @@ def test_terminal_output():
     print("TEST 4: Terminal Output Formatting")
     print("="*55)
     
-    from alert_engine import generate_hybrid_alert, process_hybrid_alert
+    from src.alerts.alert_engine import generate_hybrid_alert, process_hybrid_alert
     
     # Senaryo: Multi-sensor fault
     sensor_values = {

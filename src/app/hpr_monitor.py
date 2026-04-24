@@ -4,7 +4,7 @@ HPR Monitor — Dikey Pres Arıza Tahmin Sistemi
 Sadece HPR (Dikey Pres) makinelerini izler.
 Sistem performansını değerlendirmek için tasarlandı.
 
-Çalıştır: python3 hpr_monitor.py
+Çalıştır: PYTHONPATH=. python3 src/app/hpr_monitor.py
 """
 
 import json
@@ -15,7 +15,7 @@ import sys
 import threading
 import time
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date, datetime, UTC
 from typing import Any, Dict, List, Optional, cast
 
 import yaml
@@ -35,10 +35,10 @@ from scripts.data_tools.daily_data_manager import (
 )
 from src.alerts import alert_engine as alerter
 
-
 from src.analysis.causal_evaluator import CausalEvaluator
 from src.analysis import threshold_checker as thresh
 from src.analysis import trend_detector as trend
+from src.analysis import risk_scorer
 from src.core import data_validator as validator
 from src.core import state_store as store
 
@@ -68,50 +68,31 @@ except Exception as _ue:
 # Format: {"text": str, "ts": datetime | None}
 _ai_analysis: dict[str, dict] = defaultdict(lambda: {"text": "", "ts": None})
 
-# ─── Rich import ─────────────────────────────────────────────────────────────
-try:
-    from rich import box
-    from rich.columns import Columns
-    from rich.console import Console
-    from rich.layout import Layout
-    from rich.live import Live
-    from rich.panel import Panel
-    from rich.rule import Rule
-    from rich.table import Table
-    from rich.text import Text
-
-    RICH = True
-except ImportError:
-    print("rich kurulu değil → pip3 install rich")
-    sys.exit(1)
-
-logging.basicConfig(level=logging.ERROR)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
 log = logging.getLogger("hpr")
-console = Console()
 
 # ─── Config ──────────────────────────────────────────────────────────────────
-import os as _os
-
-_ROOT = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
-_CONFIG_PATH = _os.environ.get(
-    "CONFIG_PATH", _os.path.join(_ROOT, "config", "limits_config.yaml")
+_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_CONFIG_PATH = os.environ.get(
+    "CONFIG_PATH", os.path.join(_ROOT, "config", "limits_config.yaml")
 )
 
 try:
     with open(_CONFIG_PATH) as f:
         CONFIG = yaml.safe_load(f)
 except FileNotFoundError:
-    console.print(
-        f"[bold red]Hata: Konfig dosyası bulunamadı → {_CONFIG_PATH}[/bold red]"
-    )
-    console.print("[dim]CONFIG_PATH environment variable'ı ile yol belirtin.[/dim]")
+    log.error("Hata: Konfig dosyasi bulunamadi -> %s", _CONFIG_PATH)
+    log.error("CONFIG_PATH environment variable'i ile yol belirtin.")
     sys.exit(1)
 
 LIMITS = CONFIG.get("machine_limits", {})
 BOOL_RULES = CONFIG.get("boolean_rules", {})
 EWMA_ALPHA = CONFIG.get("ewma_alpha", {})
 PIPELINE = CONFIG.get("pipeline", {})
-CAUSAL_RULES_PATH = _os.path.join(
+CAUSAL_RULES_PATH = os.path.join(
     _ROOT, "docs", "causal_rules.json"
 )  # v2: 10 altın kural — HPR tipi bazlı filtreleme
 
@@ -119,22 +100,16 @@ causal_evaluator = CausalEvaluator(CAUSAL_RULES_PATH)
 
 KAFKA_CFG = CONFIG["kafka"]
 # Env var override — production ortamında YAML'ı değiştirmeye gerek yok
-if _os.environ.get("KAFKA_BOOTSTRAP_SERVERS"):
-    KAFKA_CFG["bootstrap_servers"] = _os.environ["KAFKA_BOOTSTRAP_SERVERS"]
-if _os.environ.get("KAFKA_TOPIC"):
-    KAFKA_CFG["topic"] = _os.environ["KAFKA_TOPIC"]
-if _os.environ.get("KAFKA_GROUP_ID"):
-    KAFKA_CFG["group_id"] = _os.environ["KAFKA_GROUP_ID"]
-
-# ─── UI Mode Settings ────────────────────────────────────────────────────────
-UI_MODE = "compact"  # "full", "compact", "minimal"
-SHOW_ALL_MACHINES = False  # False ise sadece alert olanları göster
-REFRESH_PER_SECOND = 0.5  # 2 saniyede bir güncelle (yavaş geçiş)
-# ─────────────────────────────────────────────────────────────────────────────
+if os.environ.get("KAFKA_BOOTSTRAP_SERVERS"):
+    KAFKA_CFG["bootstrap_servers"] = os.environ["KAFKA_BOOTSTRAP_SERVERS"]
+if os.environ.get("KAFKA_TOPIC"):
+    KAFKA_CFG["topic"] = os.environ["KAFKA_TOPIC"]
+if os.environ.get("KAFKA_GROUP_ID"):
+    KAFKA_CFG["group_id"] = os.environ["KAFKA_GROUP_ID"]
 
 HPR_MACHINES = [m for m in LIMITS if m.startswith("HPR")]
 
-# İzlenecek sayısal sensörler (öncelik sırası) - COMPACT MODE
+# İzlenecek sayısal sensörler (öncelik sırası)
 KEY_SENSORS = [
     "main_pressure",
     "horizontal_press_pressure",
@@ -146,8 +121,6 @@ state: Dict[str, Any] = store.load_state()
 startup_state: Dict[str, Any] = {}
 running = True
 
-# Smooth transition için previous values (UI flicker önleme)
-previous_values: Dict[str, Dict[str, Any]] = defaultdict(lambda: {"sensors": {}, "risk_score": 0, "severity": ""})
 machine_data: Dict[str, Dict[str, Any]] = defaultdict(
     lambda: {
         "execution": "—",
@@ -160,8 +133,8 @@ machine_data: Dict[str, Dict[str, Any]] = defaultdict(
         "last_alerts": cast(List[Any], []),  # Son 3 alert
         "trend_info": {},  # {sensor: slope_per_hour}
         "last_signal_ts": None,  # Zamana dayalı decay için
-        "last_alert_source": "",  # "KURAL" | "ML" — dashboard kaynak ayrımı
-        "diagnosis": "",          # "Aktif Arıza Teşhisi" badge'i için (Kısa İsim)
+        "last_alert_source": "",  # "KURAL" | "ML"
+        "diagnosis": "",          # "Aktif Arıza Teşhisi" (Kısa İsim)
         "diagnosis_desc": "",     # Teşhis açıklaması
     }
 )
@@ -171,384 +144,14 @@ for mid in HPR_MACHINES:
     _ = machine_data[mid]  # defaultdict otomatik başlatır
 
 stats: Dict[str, Any] = {"total": 0, "hpr_msgs": 0, "alerts": 0, "start": datetime.now()}
-_log_lines: List[tuple[str, str, str]] = []
 
 
-def add_log(msg: str, style: str = "white"):
-    _log_lines.append((datetime.now().strftime("%H:%M:%S"), msg, style))
-    if len(_log_lines) > 15:
-        _log_lines.pop(0)
-
-
-# ─── Gauge bar (sensör değeri limitin yüzde kaçında?) — ENHANCED DESIGN ─────
-def gauge(value: float, max_val: float, width: int = 12) -> Text:
-    """Enhanced gauge bar with percentage and color zones"""
-    pct = min(value / max_val, 1.0) if max_val > 0 else 0
-    filled = int(pct * width)
-
-    # Modern gradient bar characters
-    bar_str = "█" * filled + "░" * (width - filled)
-
-    t = Text()
-    if pct >= 1.0:
-        t.append(bar_str, style="bold red")
-        t.append(f" {pct * 100:.0f}%", style="bold red")
-    elif pct >= 0.85:
-        t.append(bar_str, style="yellow")
-        t.append(f" {pct * 100:.0f}%", style="yellow")
-    elif pct >= 0.60:
-        t.append(bar_str, style="green")
-        t.append(f" {pct * 100:.0f}%", style="green")
-    else:
-        t.append(bar_str, style="dim green")
-        t.append(f" {pct * 100:.0f}%", style="dim")
-    return t
-
-
-# ─── Sensör paneli — ENHANCED VISUAL DESIGN ─────────────────────────────────
-def build_sensor_panel(mid: str) -> Panel:
+# ─── Makine verilerini state'den yenile ──────────────────────────────────────
+def refresh_machine_data():
     """
-    ENHANCED VISUAL DESIGN PRENSİPLERİ:
-    1. Görsel hiyerarşi (başlık, içerik, footer)
-    2. Emoji ve ikonlar ile zenginleştirme
-    3. Renkli gauge bar'lar + percentage
-    4. Trend göstergeleri
-    5. Risk progress bar
-    6. Footer'da özet bilgi
+    Tüm HPR makinelerinin verilerini state store'dan okuyarak
+    machine_data dictionary'sini günceller.
     """
-    m = machine_data[mid]
-    limits = LIMITS.get(mid, {})
-
-    rows: list[Text] = []
-
-    # ═══════════════════════════════════════════════════════════
-    # SENSÖR DEĞERLERİ + GAUGE BAR'LAR (SADECE KRİTİK DURUMDA)
-    # ═══════════════════════════════════════════════════════════
-
-    # TÜRKÇE SENSÖR İSİMLERİ
-    SENSOR_NAMES_TR = {
-        "main_pressure": "Ana Basınç",
-        "horizontal_press_pressure": "Yatay Basınç",
-        "oil_tank_temperature": "Yağ Sıcaklığı",
-        "lower_ejector_pressure": "Alt İtici Basınç",
-        "horitzonal_infeed_speed": "Yatay İlerleme",
-        "vertical_infeed_speed": "Dikey İlerleme",
-    }
-
-    has_data = False
-    for sensor in KEY_SENSORS[:3]:  # İlk 3 kritik sensör
-        val = m["sensors"].get(sensor)
-        if val is None:
-            continue
-
-        has_data = True
-        lim = limits.get(sensor, {})
-        max_v = lim.get("max")
-        unit = lim.get("unit", "")
-
-        t = Text()
-        # TÜRKÇE İSİM
-        tr_name = SENSOR_NAMES_TR.get(sensor, sensor)
-        t.append(f"{tr_name:<18s}", style="cyan")
-        t.append(f"{val:>7.1f}{unit:<4s}", style="bold white")
-
-        if max_v:
-            pct = abs(val) / abs(max_v)
-            # SADECE %85+ KRİTİK DURUMDA BAR ÇİZ
-            if pct >= 0.85:
-                t.append("  ", style="")
-                t.append_text(gauge(abs(val), abs(max_v)))
-            # Trend ok (sadece önemli değişiklikler)
-            slope = m["trend_info"].get(sensor)
-            if slope and abs(slope) > 0.5:  # >0.5 birim/saat
-                if slope > 0:
-                    t.append("  ↗", style="yellow")
-                else:
-                    t.append("  ↘", style="blue")
-            else:
-                t.append("  →", style="dim")
-
-        rows.append(t)
-
-    # ═══════════════════════════════════════════════════════════
-    # BOOLEAN DURUMLAR (TÜRKÇE + ANLAMLI)
-    # ═══════════════════════════════════════════════════════════
-    bool_issues = [
-        (s, v) for s, v in m["booleans"].items() if v is not None and v > 60
-    ]  # >1 saat
-    if bool_issues:
-        rows.append(Text("", style="dim"))
-        rows.append(Text(" Cihaz Durumları:", style="dim cyan"))
-
-        # TÜRKÇE CİHAZ İSİMLERİ + DURUM AÇIKLAMASI
-        BOOL_INFO = {
-            "pilot_pump_active": ("⚙️", "Pilot Pompa", "aktif"),
-            "pressure_line_filter_2_dirty": ("🔍", "Filtre Kirliliği", "sorunlu"),
-            "press_up_down": ("⬆️⬇️", "Pres Hareketi", "aktif"),
-            "ejector_up_down": ("➡️⬅️", "İtici Hareketi", "aktif"),
-            "stripper_up_down": ("⬆️⬇️", "Sıyırıcı Hareketi", "aktif"),
-        }
-
-        for sensor, bad_min in bool_issues[:3]:  # Max 3 göster
-            icon, tr_name, status = BOOL_INFO.get(sensor, ("⚠️", sensor, "aktif"))
-            hours = bad_min / 60
-
-            t = Text()
-            t.append(f"  {icon} ", style="")
-            t.append(f"{tr_name:<20s}", style="white")
-
-            if hours > 24:
-                days = hours / 24
-                t.append(f"{days:.1f} gündür {status}", style="bold red")
-            elif hours > 1:
-                t.append(f"{hours:.1f} saattir {status}", style="yellow")
-            else:
-                mins = bad_min
-                t.append(f"{mins:.0f} dakikadır {status}", style="dim")
-
-            rows.append(t)
-
-    content = (
-        Text("\n").join(rows) if rows else Text("  ⏳ Veri bekleniyor...", style="dim")
-    )
-
-    # ═══════════════════════════════════════════════════════════
-    # RISK PROGRESS BAR + FOOTER
-    # ═══════════════════════════════════════════════════════════
-    score = m["risk_score"]
-    severity = m.get("severity", "")
-    exec_val = m.get("execution", "—")
-
-    # Risk progress bar
-    risk_bar_width = 20
-    filled = int(score / 100 * risk_bar_width)
-    risk_bar_str = "█" * filled + "░" * (risk_bar_width - filled)
-
-    # Renk kodlu risk bar
-    if score >= 70:
-        risk_style = "bold red"
-    elif score >= 40:
-        risk_style = "yellow"
-    else:
-        risk_style = "green"
-
-    footer = Text()
-    footer.append("\n", style="dim")
-    footer.append("─" * 45, style="dim")
-    footer.append("\n", style="dim")
-
-    # Risk skoru + bar
-    footer.append(f" RİSK: ", style="bold")
-    footer.append(f"{risk_bar_str}", style=risk_style)
-    footer.append(f" {score:.0f}/100", style=risk_style)
-
-    # Durum özeti
-    if severity == "KRİTİK":
-        footer.append("  🚨 ACİL!\n", style="bold red")
-        footer.append("  Hemen müdahale gerekli", style="red")
-    elif severity == "YÜKSEK":
-        footer.append("  ⚠️ YÜKSEK\n", style="red")
-        footer.append("  Yakında arıza çıkabilir", style="yellow")
-    elif severity == "ORTA":
-        footer.append("  ⚡ ORTA\n", style="yellow")
-        footer.append("  İzlemeyi sürdür", style="dim")
-    else:
-        footer.append("  ✅ NORMAL\n", style="green")
-        footer.append("  Sistem stabil", style="dim green")
-
-    # ── AI Usta Başı Analizi (bayatlama kontrolüyle) ────────────────────────
-    ai_entry = _ai_analysis.get(mid, {})
-    ai_text = ai_entry.get("text", "") if isinstance(ai_entry, dict) else ""
-    ai_ts = ai_entry.get("ts") if isinstance(ai_entry, dict) else None
-
-    if ai_text:
-        age_min = int((datetime.now() - ai_ts).total_seconds() // 60) if ai_ts else 0
-        footer.append("\n\n", style="dim")
-        footer.append("─" * 45, style="dim")
-
-        if age_min > 30:
-            # 30 dakikadan eski — soluk renk + yaş notu
-            footer.append(f"\n🧠 AI Usta Başı ({age_min}dk önce):\n", style="dim cyan")
-            text_style = "dim"
-        else:
-            footer.append("\n🧠 AI Usta Başı:\n", style="bold cyan")
-            text_style = "italic cyan"
-
-        for line in ai_text.split("\n"):
-            footer.append(f"  {line[:43]}\n", style=text_style)
-
-    content = Text("\n").join([content, footer])
-
-    # ═══════════════════════════════════════════════════════════
-    # PANEL BAŞLIK + BORDER
-    # ═══════════════════════════════════════════════════════════
-    title_t = Text()
-    title_t.append(f" ⚙️ {mid} ", style="bold cyan")
-
-    # Çalışma durumu ikonu
-    if exec_val == "RUNNING":
-        title_t.append("🟢", style="green")
-    elif exec_val == "IDLE":
-        title_t.append("🟡", style="yellow")
-    else:
-        title_t.append("🔴", style="red")
-
-    # Severity badge
-    if severity and severity != "DÜŞÜK":
-        sev_style = {"KRİTİK": "bold red", "YÜKSEK": "red", "ORTA": "yellow"}.get(
-            severity, "white"
-        )
-        title_t.append(f" [{severity}]", style=sev_style)
-
-    # Border rengi
-    if severity == "KRİTİK":
-        border = "bold red"
-    elif severity == "YÜKSEK":
-        border = "red"
-    elif severity == "ORTA":
-        border = "yellow"
-    else:
-        border = "green" if exec_val == "RUNNING" else "dim"
-
-    return Panel(
-        content, title=title_t, border_style=border, box=box.ROUNDED, padding=(0, 1)
-    )
-
-
-def _format_bar(score: float, width: int = 12) -> str:
-    filled = int(score / 100 * width)
-    return "█" * filled + "░" * (width - filled)
-
-
-# ─── Ana dashboard — 2x3 GRID LAYOUT (TÜM MAKİNELER) ────────────────────────
-def build_dashboard() -> Layout:
-    """
-    2x3 GRID TASARIMI:
-    - Tüm HPR makineleri görünür
-    - Üst satır: HPR001, HPR002, HPR003
-    - Alt satır: HPR004, HPR005, HPR006
-    - Düzgün hizalı, kayma yok
-    """
-    layout = Layout()
-    layout.split_column(
-        Layout(name="header", size=3),
-        Layout(name="upper"),  # Üst 3 makine
-        Layout(name="lower"),  # Alt 3 makine
-        Layout(name="log", size=6),
-    )
-
-    # Header
-    elapsed = datetime.now() - cast(datetime, stats["start"])
-    h, rem = divmod(int(elapsed.total_seconds()), 3600)
-    m, s = divmod(rem, 60)
-
-    header_text = Text(justify="center")
-    header_text.append("🏭 CODLEAN MES - Arıza Tahmin Sistemi\n", style="bold cyan")
-    header_text.append(
-        f"Mesaj: {cast(int, stats['total']):,} | HPR: {cast(int, stats['hpr_msgs']):,} | "
-        f"Alert: {cast(int, stats['alerts'])} | Süre: {h:02d}:{m:02d}:{s:02d}",
-        style="dim white",
-    )
-    layout["header"].update(header_text)
-
-    # TÜM MAKİNELERİ AL (Sıralı)
-    all_hpr = sorted([mid for mid in machine_data.keys() if mid.startswith("HPR")])
-
-    if not all_hpr:
-        # Henüz veri yok
-        status_text = Text(
-            "\n⏳ HPR verisi bekleniyor...\n", style="dim", justify="center"
-        )
-        layout["upper"].update(Panel(status_text, box=box.SIMPLE, padding=(2, 4)))
-        layout["lower"].update(Text(""))
-    else:
-        # TÜM MAKİNELERİ GÖSTER (2x3 GRID)
-        # En fazla 6 makine göster
-        machines_to_show = all_hpr[:6]
-
-        # ÜST SATIR (İlk 3 makine) - Her zaman 3 göster
-        upper_panels = []
-        for mid in machines_to_show[:3]:
-            panel = build_sensor_panel(mid)
-            panel.expand = True
-            upper_panels.append(panel)
-
-        # Eğer 3'ten az makine varsa boş panel ekle
-        while len(upper_panels) < 3:
-            empty_panel = Panel(
-                Text("", style="dim"), box=box.SIMPLE, border_style="dim"
-            )
-            upper_panels.append(empty_panel)
-
-        upper_columns = Columns(upper_panels, equal=True, expand=True, padding=(1, 1))
-        layout["upper"].update(upper_columns)
-
-        # ALT SATIR (Kalan makineler)
-        lower_panels = []
-        for mid in machines_to_show[3:6]:
-            panel = build_sensor_panel(mid)
-            panel.expand = True
-            lower_panels.append(panel)
-
-        # Eğer 3'ten az makine varsa boş panel ekle
-        while len(lower_panels) < 3:
-            empty_panel = Panel(
-                Text("", style="dim"), box=box.SIMPLE, border_style="dim"
-            )
-            lower_panels.append(empty_panel)
-
-        if lower_panels:
-            lower_columns = Columns(
-                lower_panels, equal=True, expand=True, padding=(1, 1)
-            )
-            layout["lower"].update(lower_columns)
-        else:
-            layout["lower"].update(Text(""))  # Boş bırak
-
-    # LOG - SADECE ÖNEMLİ DEĞİŞİKLİKLER
-    log_text = Text()
-    last_significant = None
-
-    for log_entry in _log_lines[-6:]:
-        ts, msg, style = log_entry
-        # Sadece alarm veya durum değişikliklerini göster
-        if any(
-            keyword in msg
-            for keyword in ["ALARM", "YÜKSEK", "KRİTİK", "ORTA", "başlatıldı"]
-        ):
-            if msg != last_significant:  # Duplicate check
-                log_text.append(f"{ts} - ", style="dim")
-                log_text.append(msg + "\n", style=style)
-                last_significant = msg
-
-    if log_text.plain.strip():
-        layout["log"].update(
-            Panel(
-                log_text,
-                title="[dim]📋 Önemli Olaylar[/dim]",
-                border_style="dim",
-                box=box.SIMPLE,
-                padding=(0, 1),
-            )
-        )
-    else:
-        layout["log"].update(
-            Text("\n✅ Tüm sistem normal\n", style="green", justify="center")
-        )
-
-    return layout
-
-
-# ─── Dashboard build (her 2 saniyede) ──────────────────────────────────────
-def refresh_dashboard():
-    """
-    TÜM HPR MAKİNELERİNİ GÖSTERİR:
-    - Config'den makine listesini al
-    - State'den son bilinen değerleri oku
-    - Veri yoksa "—" göster
-    - SMOOTH TRANSITION: Previous values ile flicker önleme
-    """
-    # Config'den tüm HPR makinelerini al
     all_hpr = sorted(HPR_MACHINES)
 
     for mid in all_hpr:
@@ -557,7 +160,6 @@ def refresh_dashboard():
 
         # State'den EWMA ortalama değerlerini oku
         if ms.get("ewma_mean"):
-            # Numeric sensörler - EWMA ortalama (SMOOTHING zaten limits_config.yaml'da)
             for sensor, ewma_val in ms.get("ewma_mean", {}).items():
                 md["sensors"][sensor] = round(ewma_val, 1)
 
@@ -568,11 +170,10 @@ def refresh_dashboard():
                 try:
                     from datetime import datetime, timezone
                     dt = datetime.fromisoformat(bad_str.replace("Z", "+00:00"))
-                    # utcnow yerine timezone-aware yapalım eğer Z varsa
                     if dt.tzinfo is not None:
                         bad_min = (datetime.now(timezone.utc) - dt).total_seconds() / 60
                     else:
-                        bad_min = (datetime.utcnow() - dt).total_seconds() / 60
+                        bad_min = (datetime.now(UTC) - dt).total_seconds() / 60
                     if bad_min > 0:
                         md["booleans"][sensor] = round(bad_min, 1)
                 except Exception:
@@ -582,22 +183,19 @@ def refresh_dashboard():
             if ms.get("last_execution"):
                 md["execution"] = ms["last_execution"]
 
-        # ── FIX P1-3: Operating minutes güncelle ─────────────────────────
-        # context_builder.py bu değeri okuyor; daima 0 göründüğünde Gemini
-        # "makine henüz başlatıldı" diye yanlış analiz yapıyordu.
+        # Operating minutes güncelle
         md["operating_minutes"] = store.get_operating_minutes(state, mid)
-        # ─────────────────────────────────────────────────────────────────
-        
-        # ── CAUSAL RULES DEĞERLENDİRME (SMART DASHBOARD TEŞHİSİ) ─────────
+
+        # CAUSAL RULES DEĞERLENDİRME
         diag_name, diag_desc = causal_evaluator.evaluate(md)
         md["diagnosis"] = diag_name
         md["diagnosis_desc"] = diag_desc
-        
+
         if mid not in state:
             state[mid] = {}
         state[mid]["diagnosis"] = diag_name
         state[mid]["diagnosis_desc"] = diag_desc
-        # ─────────────────────────────────────────────────────────────────
+
 
 # ─── İşleme ──────────────────────────────────────────────────────────────────
 def process(raw: dict):
@@ -607,7 +205,6 @@ def process(raw: dict):
         mid = pkt["machine_id"]
 
         # ── Günlük veri saklama ─────────────────────────────────────────────
-        # Her mesajı gününe göre ayrı klasöre kaydet (geçmiş + canlı)
         if "timestamp" in pkt:
             try:
                 msg_time = datetime.fromisoformat(
@@ -625,7 +222,7 @@ def process(raw: dict):
                     date_str=msg_time.strftime("%Y-%m-%d"),
                 )
             except Exception as e:
-                log.debug(f"Günlük kayıt hatası: {e}")
+                log.debug("Günlük kayıt hatası: %s", e)
         # ────────────────────────────────────────────────────────────────────
 
         # Sadece HPR
@@ -706,27 +303,23 @@ def process(raw: dict):
                 if alerter.process_alert(event, min_score=20):
                     stats["alerts"] = cast(int, stats["alerts"]) + 1
                     md["alert_count"] = cast(int, md["alert_count"]) + 1
-                    icon = "🚨" if event.severity == "KRİTİK" else "⚠️"
-                    sev_style = {
-                        "KRİTİK": "bold red",
-                        "YÜKSEK": "red",
-                        "ORTA": "yellow",
-                    }.get(event.severity, "white")
-                    add_log(
-                        f"{icon} [KURAL] {mid} | {event.severity} | skor={event.risk_score:.0f} | {event.reasons[0][:50]}",
-                        style=sev_style,
+                    log.info(
+                        "[KURAL] %s | %s | skor=%.0f | %s",
+                        mid,
+                        event.severity,
+                        event.risk_score,
+                        event.reasons[0][:50],
                     )
                     # ── AI Usta Başı: alert sonrası arka planda analiz ──────
                     if _USTA_AVAILABLE:
                         ctx = context_builder.build(mid, md, LIMITS, CAUSAL_RULES_PATH)
 
                         def _cb(machine_id: str, text: str) -> None:
-                            # FIX P1-4: Timestamp ile sakla — bayatlama tespiti için
                             _ai_analysis[machine_id] = {
                                 "text": text,
                                 "ts": datetime.now(),
                             }
-                            add_log(f"🧠 [AI] {machine_id} analizi hazır", style="cyan")
+                            log.info("[AI] %s analizi hazir", machine_id)
 
                         _usta.analyze_async(ctx, _cb, force=True)
         else:
@@ -734,10 +327,8 @@ def process(raw: dict):
             if md["risk_score"] > 0:
                 last_decay = md.get("last_decay_ts", md.get("last_signal_ts") or datetime.now())
                 elapsed_sec = (datetime.now() - last_decay).total_seconds()
-                # 60 saniyede ~5 puan düşecek şekilde ayarlayalım, sık güncellemede 0 engeli aşılır.
                 decay = (elapsed_sec / 60.0) * 5.0
-                
-                # Ufak adımları (spam) yoksaymak için sadece yeterince zaman geçince düşür.
+
                 if decay > 0.5:
                     md["risk_score"] = max(md["risk_score"] - decay, 0.0)
                     if md["risk_score"] == 0:
@@ -747,9 +338,6 @@ def process(raw: dict):
                     md["last_decay_ts"] = datetime.now()
 
             # ── ML PRE-FAULT YOLU: Kural sinyali yokken ML erken uyarı ──────
-            # Sadece is_stale ve is_startup dışında çalışır.
-            # Throttle: alerter._last_alert paylaşımlı → sonsuz alert riski yok.
-            # Fallback: _ML_AVAILABLE=False ise bu blok sessizce atlanır.
             if (
                 _ML_AVAILABLE
                 and _ml_predictor.is_active
@@ -765,7 +353,7 @@ def process(raw: dict):
                 )
                 for ha in hybrid_alerts:
                     if ha["type"] != "PRE_FAULT_WARNING":
-                        continue  # FAULT zaten yukarıda threshold_checker yakaladı
+                        continue
                     if alerter.process_hybrid_alert(ha, use_rich=False):
                         stats["alerts"] += 1
                         md["alert_count"] += 1
@@ -774,19 +362,18 @@ def process(raw: dict):
                         md["confidence"] = ha.get("confidence", 0.0)
                         md["last_signal_ts"] = datetime.now()
                         md["last_alert_source"] = "ML"
-                        add_log(
-                            f"🤖 [ML] {mid} | {ha['severity']} | "
-                            f"güven={ha['confidence'] * 100:.0f}% | {ha['reasons'][0][:50]}",
-                            style="cyan",
+                        log.info(
+                            "[ML] %s | %s | guven=%.0f%% | %s",
+                            mid,
+                            ha["severity"],
+                            ha["confidence"] * 100,
+                            ha["reasons"][0][:50],
                         )
 
         # ── Window Collectors ─────────────────────────────────────────
-        # 1. Basit window collector (geriye uyumluluk için)
-        # 2. Rich context collector (zengin bağlam için ±30dk pencere)
         if pkt["numeric"]:
             collector.record(mid, pkt["numeric"])
 
-            # Rich context: startup zamanını da gönder
             startup_ts = None
             if mid in state and "startup_ts" in state[mid]:
                 startup_ts = state[mid]["startup_ts"]
@@ -801,8 +388,8 @@ def main():
         {
             "bootstrap.servers": KAFKA_CFG["bootstrap_servers"],
             "group.id": KAFKA_CFG.get("group_id", "hpr-monitor-prod"),
-            "auto.offset.reset": "earliest",  # 7 gün geriye kadar tüm verileri çek
-            "enable.auto.commit": True,  # Static group.id ile offset Kafka'ya yazılır
+            "auto.offset.reset": "latest",
+            "enable.auto.commit": True,
             "auto.commit.interval.ms": 5000,
             "session.timeout.ms": 10000,
             "fetch.wait.max.ms": 500,
@@ -817,54 +404,78 @@ def main():
     signal.signal(signal.SIGINT, stop)
     signal.signal(signal.SIGTERM, stop)
 
-    add_log("✅ Pipeline başlatıldı — HPR makineleri izleniyor", style="green")
-    add_log(
-        f"   {len(HPR_MACHINES)} makine konfigürasyonu yüklendi: {', '.join(HPR_MACHINES)}",
-        style="dim",
+    log.info("Pipeline baslatildi — HPR makineleri izleniyor")
+    log.info(
+        "%s makine konfigurasyonu yuklendi: %s",
+        len(HPR_MACHINES),
+        ", ".join(HPR_MACHINES),
     )
 
     last_state_save = time.time()
-    with Live(
-        build_dashboard(),
-        refresh_per_second=REFRESH_PER_SECOND,
-        screen=True,
-        console=console,
-    ) as live:
-        while running:
-            msg = consumer.poll(timeout=0.5)
+    last_status_log = time.time()
 
-            if msg is None:
-                live.update(build_dashboard())
-                continue
-            if msg.error():
-                if msg.error().code() != KafkaError._PARTITION_EOF:
-                    add_log(f"⛔ Kafka hata: {msg.error()}", style="red")
-                continue
+    while running:
+        msg = consumer.poll(timeout=0.5)
 
-            try:
-                data = json.loads(msg.value())
-                stats["total"] = cast(int, stats["total"]) + 1
-                process(data)
+        if msg is None:
+            now_time = time.time()
+            if now_time - last_status_log >= 60.0:
+                active_alerts = sum(
+                    1 for m in machine_data.values()
+                    if m.get("severity") not in ("", "DÜŞÜK", None)
+                )
+                log.info(
+                    "DURUM | makineler=%s | mesajlar=%s | hpr_mesajlar=%s | alertler=%s | aktif_uyarilar=%s",
+                    len(HPR_MACHINES),
+                    stats["total"],
+                    stats["hpr_msgs"],
+                    stats["alerts"],
+                    active_alerts,
+                )
+                last_status_log = now_time
+            continue
 
-                # Her iterasyonda state'den makine verilerini yenile
-                refresh_dashboard()
+        if msg.error():
+            if msg.error().code() != KafkaError._PARTITION_EOF:
+                log.error("Kafka hata: %s", msg.error())
+            continue
 
-                now_time = time.time()
-                if now_time - last_state_save >= 300.0:
-                    store.save_state(state)
-                    last_state_save = now_time
+        try:
+            data = json.loads(msg.value())
+            stats["total"] = cast(int, stats["total"]) + 1
+            process(data)
 
-                live.update(build_dashboard())
-            except Exception as e:
-                log.debug("İşleme hatası: %s", e)
+            refresh_machine_data()
+
+            now_time = time.time()
+            if now_time - last_state_save >= 30.0:
+                store.save_state(state)
+                last_state_save = now_time
+
+                active_alerts = sum(
+                    1 for m in machine_data.values()
+                    if m.get("severity") not in ("", "DÜŞÜK", None)
+                )
+                log.info(
+                    "DURUM | makineler=%s | mesajlar=%s | hpr_mesajlar=%s | alertler=%s | aktif_uyarilar=%s",
+                    len(HPR_MACHINES),
+                    stats["total"],
+                    stats["hpr_msgs"],
+                    stats["alerts"],
+                    active_alerts,
+                )
+                last_status_log = now_time
+
+        except Exception as e:
+            log.debug("İşleme hatası: %s", e)
 
     store.save_state(state)
-    collector.force_save()  # live_windows.json son kez yaz
-    rich_collector.force_save()  # rich_context_windows.json son kez yaz
+    collector.force_save()
+    rich_collector.force_save()
     consumer.close()
-    console.print("\n[green]✅ Sistem durduruldu. State + Windows kaydedildi.[/green]")
-    console.print(f"[dim]{collector.summary()}[/dim]")
-    console.print(f"[dim]{rich_collector.summary()}[/dim]")
+    log.info("Sistem durduruldu. State + Windows kaydedildi.")
+    log.info("%s", collector.summary())
+    log.info("%s", rich_collector.summary())
 
 
 if __name__ == "__main__":

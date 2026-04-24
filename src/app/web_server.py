@@ -25,7 +25,7 @@ from flask import Flask, jsonify, Response, send_from_directory, request
 # ─── Yollar ──────────────────────────────────────────────────────────────────
 BASE_DIR    = Path(__file__).resolve().parents[2]
 STATE_PATH   = BASE_DIR / "state.json"
-CONTEXT_PATH = BASE_DIR / "rich_context_windows.json"
+CONTEXT_PATH = BASE_DIR / "rich_context_windows.jsonl"
 LIMITS_PATH  = BASE_DIR / "config" / "limits_config.yaml"
 RULES_PATH   = BASE_DIR / "docs" / "causal_rules.json"
 STATIC_DIR   = BASE_DIR / "src" / "ui" / "web"
@@ -204,14 +204,31 @@ def read_state() -> dict:
         return _state_cache["data"]
 
 def read_context() -> dict:
-    """Disk I/O optimize edilmiş context okuması (mtime control)"""
+    """JSONL formatındaki context dosyasından istatistik okur."""
     try:
         if not os.path.exists(CONTEXT_PATH):
             return {}
         mtime = os.path.getmtime(CONTEXT_PATH)
         if mtime > _context_cache["mtime"]:
-            with open(CONTEXT_PATH) as f:
-                _context_cache["data"] = json.load(f)
+            total_windows = 0
+            total_valid = 0
+            with open(CONTEXT_PATH, "r", encoding="utf-8") as f:
+                for line in f:
+                    if not line.strip():
+                        continue
+                    try:
+                        data = json.loads(line)
+                        total_windows += 1
+                        if data.get("labels", {}).get("is_valid_fault"):
+                            total_valid += 1
+                    except json.JSONDecodeError:
+                        continue
+            _context_cache["data"] = {
+                "summary": {
+                    "total_context_windows": total_windows,
+                    "total_valid_faults": total_valid,
+                }
+            }
             _context_cache["mtime"] = mtime
         return _context_cache["data"]
     except Exception as e:
@@ -297,8 +314,18 @@ def build_machines_payload() -> list:
         diag_desc = ms.get("diagnosis_desc", "")
         diagnoses = [{"rule": diag_name, "explanation_tr": diag_desc, "risk_add": ""}] if diag_name else []
 
+        # Makine tipi
+        if mid in YATAY_PRESLER:
+            machine_type = "Yatay Pres"
+        elif mid in DIKEY_PRESLER:
+            machine_type = "Dikey Pres"
+        else:
+            machine_type = "HPR"
+
         result.append({
             "id":        mid,
+            "type":      machine_type,
+            "execution": ms.get("last_execution", "—"),
             "risk_score": round(risk_score, 1),
             "severity":   severity,
             "sensors":    sensors[:6],

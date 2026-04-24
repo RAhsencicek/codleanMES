@@ -15,7 +15,7 @@ Alert Prioritization:
   FAULT > PRE_FAULT_WARNING > NORMAL (alert yok)
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from src.analysis.risk_scorer import RiskEvent
 import logging
 import json
@@ -47,7 +47,7 @@ ALERT_TYPE_MAP = {
 
 def should_alert(machine_id: str, severity: str) -> bool:
     """Throttle kontrolü. Son alertten yeterince süre geçti mi?"""
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     last = _last_alert.get(machine_id)
     if last is None:
         return True
@@ -329,7 +329,7 @@ def generate_hybrid_alert(
                 'sensor_values': sensor_values,
                 'fault_count': len(hard_faults),
                 'multi_sensor': multi_sensor,
-                'timestamp': datetime.utcnow()
+                'timestamp': datetime.now(UTC)
             }
             
             alerts.append(alert)
@@ -353,7 +353,7 @@ def generate_hybrid_alert(
                 'recommendation': 'Dikkat: Sensör değerlerini izlemeye devam et',
                 'sensor_values': sensor_values,
                 'soft_fault_count': len(soft_faults),
-                'timestamp': datetime.utcnow()
+                'timestamp': datetime.now(UTC)
             }
             
             alerts.append(alert)
@@ -396,7 +396,7 @@ def generate_hybrid_alert(
                 'sensor_values': sensor_values,
                 'ml_score': pre_fault['score'],
                 'time_horizon': '30-60 dakika',
-                'timestamp': datetime.utcnow()
+                'timestamp': datetime.now(UTC)
             }
             
             alerts.append(alert)
@@ -553,7 +553,7 @@ def process_hybrid_alert(
         return False
     
     # Alert'i işaretle
-    _last_alert[machine_id] = datetime.utcnow()
+    _last_alert[machine_id] = datetime.now(UTC)
     
     log.info("HYBRID_ALERT | %s | %s | confidence=%.2f | reasons=%d",
              machine_id, alert_type, alert['confidence'], len(alert['reasons']))
@@ -682,7 +682,7 @@ def process_alert(event: RiskEvent, min_score: float = 20.0) -> bool:
         return False
 
     # Alert üret
-    _last_alert[event.machine_id] = datetime.utcnow()
+    _last_alert[event.machine_id] = datetime.now(UTC)
     log.info("ALERT | %s | %s | skor=%.0f | güven=%.2f",
              event.machine_id, event.severity, event.risk_score, event.confidence)
 

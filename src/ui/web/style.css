@@ -270,6 +270,7 @@ body {
 .exec-idle    { background: rgba(234,179,8,0.13); color: var(--yellow); border: 1px solid rgba(234,179,8,0.3); }
 .exec-stopped { background: rgba(239,68,68,0.12); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
 .exec-unknown { background: rgba(255,255,255,0.06); color: var(--text-3); border: 1px solid var(--border); }
+.exec-type    { background: rgba(99,179,237,0.12); color: var(--blue); border: 1px solid rgba(99,179,237,0.25); }
 
 /* Risk bar büyük */
 .risk-section { display: flex; flex-direction: column; gap: 5px; }

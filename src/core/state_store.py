@@ -12,7 +12,7 @@ Her makine için geçmişi RAM'de tutar.
 """
 
 from collections import deque, defaultdict
-from datetime import datetime
+from datetime import datetime, UTC
 import tempfile, os, json, logging, time
 import threading
 
@@ -139,7 +139,7 @@ def update_boolean(
         # success_key'e göre "kötü" durumu belirle
         is_bad = (value != success_key)
 
-        now_str = datetime.utcnow().isoformat()
+        now_str = datetime.now(UTC).isoformat()
 
         if is_bad:
             if ms["bool_active_since"].get(sensor) is None:
@@ -147,7 +147,7 @@ def update_boolean(
             since_str = ms["bool_active_since"][sensor]
             try:
                 minutes = (
-                    datetime.utcnow() - datetime.fromisoformat(since_str)
+                    datetime.now(UTC) - datetime.fromisoformat(since_str)
                 ).total_seconds() / 60
                 return round(minutes, 1)
             except Exception:
@@ -226,7 +226,7 @@ def save_state(state: dict, path: str = CHECKPOINT_PATH):
     """Atomik yazma: temp dosya → rename. Yarım yazma riski yok."""
     payload = {
         "_schema_version": SCHEMA_VERSION,
-        "_saved_at":       datetime.utcnow().isoformat(),
+        "_saved_at":       datetime.now(UTC).isoformat(),
         "machines":        _make_serializable(state),
     }
     tmp_dir = os.path.dirname(os.path.abspath(path)) or "."

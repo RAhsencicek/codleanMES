@@ -4,39 +4,24 @@ test_realistic_scenarios.py — Gerçekçi Üretim Senaryoları
 Fabrika ortamındaki gerçek durumları simüle eder.
 """
 
+import os
 import yaml
+import pytest
 from src.alerts.alert_engine import generate_hybrid_alert, process_hybrid_alert
-from datetime import datetime
 
 # Limits config yükle
-with open("limits_config.yaml") as f:
+CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "config", "limits_config.yaml")
+with open(CONFIG_PATH) as f:
     CONFIG = yaml.safe_load(f)
 
 LIMITS = CONFIG.get("machine_limits", {})
 
-print("\n" + "╔" + "═"*53 + "╗")
-print("║" + " "*10 + "GERÇEKÇİ ÜRETİM SENARYOLARI" + " "*12 + "║")
-print("╚" + "═"*53 + "╝")
 
-# ─── SENARYO 1: MAKİNE ISINMA DEVRİ ──────────────────────────────────────
-print("\n┌─ SENARYO 1: MAKİNE ISINMA DEVRİ (Startup)")
-print("─"*55)
-print("Durum: Makine yeni başladı, sensör değerleri stabil değil\n")
-
-sensor_values_startup = {
-    "oil_tank_temperature": 28.0,      # Soğuk (normal: 38-42)
-    "main_pressure": 85.0,             # Düşük (normal: 95-105)
-    "horizontal_press_pressure": 95.0, # Düşük
-    "lower_ejector_pressure": 70.0,    # Düşük
-    "horitzonal_infeed_speed": 120.0,  # Normal
-    "vertical_infeed_speed": 100.0,    # Normal
-}
-
-# Mock ML (startup'ta model düşük confidence verir)
-class MockML_Startup:
+class MockMLStartup:
+    """Startup phase mock ML predictor (düşük confidence)."""
     def __init__(self):
         self.is_active = True
-    
+
     def predict_risk(self, machine_id, state):
         class Result:
             score = 35.0
@@ -45,85 +30,12 @@ class MockML_Startup:
             explanation = "ML: Startup phase, düşük confidence"
         return Result()
 
-alerts_startup = generate_hybrid_alert(
-    "HPR001",
-    sensor_values_startup,
-    {"ewma_mean": {}, "buffers": {}, "ewma_var": {}, "sample_count": {}},
-    LIMITS,
-    MockML_Startup()
-)
 
-if alerts_startup:
-    print(f"⚠️  Alert: {alerts_startup[0]['type']}")
-    print(f"   Confidence: %{alerts_startup[0]['confidence']*100:.0f}")
-    print(f"   Recommendation: {alerts_startup[0]['recommendation']}")
-else:
-    print("✅ Alert yok (startup normal kabul edildi)")
-
-# ─── SENARYO 2: PRODUCTION SPEED ─────────────────────────────────────────
-print("\n┌─ SENARYO 2: YÜKSEK ÜRETİM HIZI (Full Speed)")
-print("─"*55)
-print("Durum: Makine tam kapasite çalışıyor, basınçlar yüksek\n")
-
-sensor_values_full_speed = {
-    "oil_tank_temperature": 43.5,      # max: 45'e yakın (%96)
-    "main_pressure": 108.0,            # max: 110'a yakın (%98)
-    "horizontal_press_pressure": 118.0, # max: 120'e yakın (%98)
-    "lower_ejector_pressure": 105.0,   # max: 110'a yakın (%95)
-    "horitzonal_infeed_speed": 280.0,  # max: 300'e yakın (%93)
-    "vertical_infeed_speed": 270.0,    # max: 300'e yakın (%90)
-}
-
-alerts_full = generate_hybrid_alert(
-    "HPR001",
-    sensor_values_full_speed,
-    {"ewma_mean": {"oil_tank_temperature": 2.5}, "buffers": {}, "ewma_var": {}, "sample_count": {}},
-    LIMITS
-)
-
-if alerts_full:
-    alert = alerts_full[0]
-    print(f"⚠️  Alert: {alert['type']}")
-    print(f"   Severity: {alert['severity']}")
-    print(f"   Reason: {alert['reasons'][0]}")
-    
-    # Soft limit check (85% threshold)
-    if alert['type'] == 'PRE_FAULT_WARNING':
-        print("   → Soft limit uyarısı (85%+)" )
-else:
-    print("✅ Alert yok (full speed normal kabul edildi)")
-
-# ─── SENARYO 3: KADEMELİ BOZULMA (Gradual Degradation) ──────────────────
-print("\n┌─ SENARYO 3: KADEMELİ BOZULMA (3 GÜNDÜR YÜKSELİŞ)")
-print("─"*55)
-print("Durum: Basınç değerleri 3 gündür yavaş yavaş yükseliyor\n")
-
-sensor_values_degrading = {
-    "oil_tank_temperature": 44.0,      # max: 45 → %97.8
-    "main_pressure": 109.5,            # max: 110 → %99.5 (çok yakın!)
-    "horizontal_press_pressure": 119.0, # max: 120 → %99.2
-    "lower_ejector_pressure": 108.0,   # max: 110 → %98.2
-    "horitzonal_infeed_speed": 150.0,  # Normal
-    "vertical_infeed_speed": 150.0,    # Normal
-}
-
-# Trend bilgisi
-window_features_degrading = {
-    "ewma_mean": {
-        "main_pressure": 3.5,          # Günlük artış
-        "horizontal_press_pressure": 2.8,
-        "oil_tank_temperature": 1.2,
-    },
-    "buffers": {},
-    "ewma_var": {},
-    "sample_count": {}
-}
-
-# Mock ML (yüksek confidence - pattern algıladı)
-class MockML_Degradation:
+class MockMLDegradation:
+    """Gradual degradation mock ML predictor (yüksek confidence)."""
     def __init__(self):
         self.is_active = True
-    
+
     def predict_risk(self, machine_id, state):
         class Result:
             score = 82.0
@@ -132,166 +44,176 @@ class MockML_Degradation:
             explanation = "ML: Kademeli bozulma pattern'i algılandı!"
         return Result()
 
-alerts_degrading = generate_hybrid_alert(
-    "HPR001",
-    sensor_values_degrading,
-    window_features_degrading,
-    LIMITS,
-    MockML_Degradation()
-)
 
-if alerts_degrading:
-    alert = alerts_degrading[0]
-    print(f"🟡 Alert: {alert['type']}")
-    print(f"   Confidence: %{alert['confidence']*100:.0f}")
-    print(f"   Time Horizon: {alert.get('time_horizon', 'N/A')}")
-    print(f"   Recommendation: {alert['recommendation']}")
-    print(f"\n   Reasons:")
-    for reason in alert['reasons']:
-        print(f"     • {reason}")
-else:
-    print("❌ Alert üretilmedi (BEKLENMEYEN!)")
+# ─── SENARYO 1: MAKİNE ISINMA DEVRİ ──────────────────────────────────────
+def test_startup_phase():
+    """Makine yeni başladı, sensör değerleri stabil değil — low confidence kabul edilebilir."""
+    sensor_values_startup = {
+        "oil_tank_temperature": 28.0,      # Soğuk (normal: 38-42)
+        "main_pressure": 85.0,             # Düşük (normal: 95-105)
+        "horizontal_press_pressure": 95.0, # Düşük
+        "lower_ejector_pressure": 70.0,    # Düşük
+        "horitzonal_infeed_speed": 120.0,  # Normal
+        "vertical_infeed_speed": 100.0,    # Normal
+    }
+
+    alerts_startup = generate_hybrid_alert(
+        "HPR001",
+        sensor_values_startup,
+        {"ewma_mean": {}, "buffers": {}, "ewma_var": {}, "sample_count": {}},
+        LIMITS,
+        MockMLStartup()
+    )
+
+    # Startup'ta ya alert yoktur ya da düşük confidence'lıdır
+    if alerts_startup:
+        assert alerts_startup[0]['confidence'] < 0.5, "Startup'ta düşük confidence olmalı!"
+
+
+# ─── SENARYO 2: PRODUCTION SPEED ─────────────────────────────────────────
+def test_full_speed_operation():
+    """Makine tam kapasite çalışıyor, basınçlar yüksek — soft limit uyarısı verebilir."""
+    sensor_values_full_speed = {
+        "oil_tank_temperature": 43.5,      # max: 45'e yakın (%96)
+        "main_pressure": 108.0,            # max: 110'a yakın (%98)
+        "horizontal_press_pressure": 118.0, # max: 120'e yakın (%98)
+        "lower_ejector_pressure": 105.0,   # max: 110'a yakın (%95)
+        "horitzonal_infeed_speed": 280.0,  # max: 300'e yakın (%93)
+        "vertical_infeed_speed": 270.0,    # max: 300'e yakın (%90)
+    }
+
+    alerts_full = generate_hybrid_alert(
+        "HPR001",
+        sensor_values_full_speed,
+        {"ewma_mean": {"oil_tank_temperature": 2.5}, "buffers": {}, "ewma_var": {}, "sample_count": {}},
+        LIMITS
+    )
+
+    # Full speed'te ya soft limit ya da pre-fault uyarısı olabilir
+    if alerts_full:
+        assert alerts_full[0]['type'] in ['SOFT_LIMIT_WARNING', 'PRE_FAULT_WARNING', 'FAULT'], \
+            "Full speed'te beklenen alert tipi!"
+
+
+# ─── SENARYO 3: KADEMELİ BOZULMA (Gradual Degradation) ──────────────────
+def test_gradual_degradation():
+    """Basınç değerleri 3 gündür yavaş yavaş yükseliyor — ML pre-fault yakalamalı."""
+    sensor_values_degrading = {
+        "oil_tank_temperature": 44.0,      # max: 45 → %97.8
+        "main_pressure": 109.5,            # max: 110 → %99.5 (çok yakın!)
+        "horizontal_press_pressure": 119.0, # max: 120 → %99.2
+        "lower_ejector_pressure": 108.0,   # max: 110 → %98.2
+        "horitzonal_infeed_speed": 150.0,  # Normal
+        "vertical_infeed_speed": 150.0,    # Normal
+    }
+
+    window_features_degrading = {
+        "ewma_mean": {
+            "main_pressure": 3.5,          # Günlük artış
+            "horizontal_press_pressure": 2.8,
+            "oil_tank_temperature": 1.2,
+        },
+        "buffers": {},
+        "ewma_var": {},
+        "sample_count": {}
+    }
+
+    alerts_degrading = generate_hybrid_alert(
+        "HPR001",
+        sensor_values_degrading,
+        window_features_degrading,
+        LIMITS,
+        MockMLDegradation()
+    )
+
+    assert len(alerts_degrading) > 0, "Kademeli bozulmada alert üretilmeli!"
+    # ML yüksek confidence verdiği için pre-fault veya fault olabilir
+    assert alerts_degrading[0]['confidence'] >= 0.8, "Yüksek confidence olmalı!"
+
 
 # ─── SENARYO 4: ANİ ŞOK (Sudden Shock) ───────────────────────────────────
-print("\n┌─ SENARYO 4: ANİ ŞOK (Hata/Çarpma)")
-print("─"*55)
-print("Durum: Makine bir şeye çarptı, ani basınç sıçraması\n")
+def test_sudden_shock():
+    """Makine bir şeye çarptı, ani basınç sıçraması — kritik fault algılanmalı."""
+    sensor_values_shock = {
+        "oil_tank_temperature": 38.0,      # Normal
+        "main_pressure": 145.0,            # max: 110 → %31.8 aşım (ÇOK KRİTİK!)
+        "horizontal_press_pressure": 155.0, # max: 120 → %29.2 aşım
+        "lower_ejector_pressure": 125.0,   # max: 110 → %13.6 aşım
+        "horitzonal_infeed_speed": 150.0,  # Normal
+        "vertical_infeed_speed": 150.0,    # Normal
+    }
 
-sensor_values_shock = {
-    "oil_tank_temperature": 38.0,      # Normal
-    "main_pressure": 145.0,            # max: 110 → %31.8 aşım (ÇOK KRİTİK!)
-    "horizontal_press_pressure": 155.0, # max: 120 → %29.2 aşım
-    "lower_ejector_pressure": 125.0,   # max: 110 → %13.6 aşım
-    "horitzonal_infeed_speed": 150.0,  # Normal
-    "vertical_infeed_speed": 150.0,    # Normal
-}
+    alerts_shock = generate_hybrid_alert(
+        "HPR001",
+        sensor_values_shock,
+        {},
+        LIMITS
+    )
 
-alerts_shock = generate_hybrid_alert(
-    "HPR001",
-    sensor_values_shock,
-    {},
-    LIMITS
-)
-
-if alerts_shock:
+    assert len(alerts_shock) > 0, "Ani şok durumunda alert üretilmeli!"
     alert = alerts_shock[0]
-    print(f"🔴 ALERT: {alert['type']}")
-    print(f"   Severity: {alert['severity']}")
-    print(f"   Multi-sensor: {alert.get('multi_sensor', False)}")
-    print(f"   Fault count: {alert.get('fault_count', 0)}")
-    print(f"\n   ÖNERİ: {alert['recommendation']}")
-    
-    # Terminal output
-    print(f"\n📢 Terminal Output:")
-    process_hybrid_alert(alert, use_rich=False)
-else:
-    print("❌ Alert üretilmedi (ÇOK KÖTÜ!)")
+    assert alert['severity'] == 'KRİTİK', "Ani şok KRİTİK olmalı!"
+    assert alert.get('multi_sensor', False) is True, "Multi-sensor fault olmalı!"
+
 
 # ─── SENARYO 5: TEK SENSÖR FAULT vs MULTI-SENSORS ───────────────────────
-print("\n┌─ SENARYO 5A: TEK SENSÖR FAULT")
-print("─"*55)
+def test_single_sensor_fault():
+    """Tek sensör fault — multi_sensor flag False olmalı."""
+    sensor_values_single = {
+        "oil_tank_temperature": 48.0,      # max: 45 → %6.7 aşım
+        "main_pressure": 95.0,             # Normal
+        "horizontal_press_pressure": 105.0, # Normal
+        "lower_ejector_pressure": 88.0,    # Normal
+        "horitzonal_infeed_speed": 150.0,  # Normal
+        "vertical_infeed_speed": 150.0,    # Normal
+    }
 
-sensor_values_single = {
-    "oil_tank_temperature": 48.0,      # max: 45 → %6.7 aşım
-    "main_pressure": 95.0,             # Normal
-    "horizontal_press_pressure": 105.0, # Normal
-    "lower_ejector_pressure": 88.0,    # Normal
-    "horitzonal_infeed_speed": 150.0,  # Normal
-    "vertical_infeed_speed": 150.0,    # Normal
-}
+    alerts_single = generate_hybrid_alert("HPR001", sensor_values_single, {}, LIMITS)
 
-alerts_single = generate_hybrid_alert("HPR001", sensor_values_single, {}, LIMITS)
+    assert len(alerts_single) > 0, "Tek sensör fault alert üretilmeli!"
+    assert alerts_single[0].get('multi_sensor', False) is False, "Tek sensörde multi_sensor False olmalı!"
 
-if alerts_single:
-    alert = alerts_single[0]
-    print(f"   Alert: {alert['type']}")
-    print(f"   Multi-sensor: {alert.get('multi_sensor', False)}")
-    print(f"   Recommendation: {alert['recommendation']}")
 
-print("\n┌─ SENARYO 5B: MULTI-SENSOR FAULT")
-print("─"*55)
+def test_multi_sensor_fault():
+    """Multi-sensor fault — multi_sensor flag True ve daha acil olmalı."""
+    sensor_values_multi = {
+        "oil_tank_temperature": 48.0,      # max: 45 → %6.7 aşım
+        "main_pressure": 118.0,            # max: 110 → %7.3 aşım
+        "horizontal_press_pressure": 128.0, # max: 120 → %6.7 aşım
+        "lower_ejector_pressure": 88.0,    # Normal
+        "horitzonal_infeed_speed": 150.0,  # Normal
+        "vertical_infeed_speed": 150.0,    # Normal
+    }
 
-sensor_values_multi = {
-    "oil_tank_temperature": 48.0,      # max: 45 → %6.7 aşım
-    "main_pressure": 118.0,            # max: 110 → %7.3 aşım
-    "horizontal_press_pressure": 128.0, # max: 120 → %6.7 aşım
-    "lower_ejector_pressure": 88.0,    # Normal
-    "horitzonal_infeed_speed": 150.0,  # Normal
-    "vertical_infeed_speed": 150.0,    # Normal
-}
+    alerts_multi = generate_hybrid_alert("HPR001", sensor_values_multi, {}, LIMITS)
 
-alerts_multi = generate_hybrid_alert("HPR001", sensor_values_multi, {}, LIMITS)
-
-if alerts_multi:
+    assert len(alerts_multi) > 0, "Multi-sensor fault alert üretilmeli!"
     alert = alerts_multi[0]
-    print(f"   Alert: {alert['type']}")
-    print(f"   Multi-sensor: {alert.get('multi_sensor', False)}")
-    print(f"   Fault count: {alert.get('fault_count', 0)}")
-    print(f"   Recommendation: {alert['recommendation']}")
-    print(f"\n   ⚠️  MULTI-SENSOR olduğu için daha ACİL!")
+    assert alert.get('multi_sensor', False) is True, "Multi-sensorde multi_sensor True olmalı!"
+    assert alert.get('fault_count', 0) >= 2, "En az 2 fault olmalı!"
+
 
 # ─── SENARYO 6: GECE VARDİYASI (DÜŞÜK LOAD) ─────────────────────────────
-print("\n┌─ SENARYO 6: GECE VARDİYASI (Low Load)")
-print("─"*55)
-print("Durum: Gece üretimi az, makineler düşük yükte\n")
+def test_night_shift_low_load():
+    """Gece üretimi az, makineler düşük yükte — alert olmamalı."""
+    sensor_values_night = {
+        "oil_tank_temperature": 35.0,      # Düşük (normal: 38-42)
+        "main_pressure": 75.0,             # Düşük (normal: 95-105)
+        "horizontal_press_pressure": 85.0, # Düşük
+        "lower_ejector_pressure": 65.0,    # Düşük
+        "horitzonal_infeed_speed": 80.0,   # Düşük
+        "vertical_infeed_speed": 70.0,     # Düşük
+    }
 
-sensor_values_night = {
-    "oil_tank_temperature": 35.0,      # Düşük (normal: 38-42)
-    "main_pressure": 75.0,             # Düşük (normal: 95-105)
-    "horizontal_press_pressure": 85.0, # Düşük
-    "lower_ejector_pressure": 65.0,    # Düşük
-    "horitzonal_infeed_speed": 80.0,   # Düşük
-    "vertical_infeed_speed": 70.0,     # Düşük
-}
+    alerts_night = generate_hybrid_alert(
+        "HPR001",
+        sensor_values_night,
+        {},
+        LIMITS
+    )
 
-alerts_night = generate_hybrid_alert(
-    "HPR001",
-    sensor_values_night,
-    {},
-    LIMITS
-)
+    assert len(alerts_night) == 0, "Düşük load gece vardiyasında alert olmamalı!"
 
-if alerts_night:
-    print(f"⚠️  Alert: {alerts_night[0]['type']}")
-    print(f"   Reason: {alerts_night[0]['reasons'][0]}")
-else:
-    print("✅ Alert yok (düşük load normal)")
 
-# ─── SENARYO 7: FILTER CLOGGING (Boolean Sensor) ────────────────────────
-# Not: Boolean sensor'lar şu anda hybrid alert'te değil
-# Ama future work için not bırakalım
-print("\n┌─ SENARYO 7: FİLTRE TIKANIKLIĞI (Future Work)")
-print("─"*55)
-print("Durum: pressure_line_filter_1_dirty = TRUE (60+ dakika)")
-print("Not: Boolean sensor'lar şimdilik rule-based'de değil")
-print("→ Future: Hybrid alert'e boolean sensor ekle")
-
-# ─── ÖZET ────────────────────────────────────────────────────────────────
-print("\n" + "="*55)
-print("SENARYO ÖZETİ")
-print("="*55)
-
-scenarios = [
-    ("Makine Isınma Devri", "✅ Test edildi"),
-    ("Yüksek Üretim Hızı", "✅ Test edildi"),
-    ("Kademeli Bozulma", "✅ Test edildi + ML pre-fault"),
-    ("Ani Şok", "✅ Test edildi + Critical alert"),
-    ("Tek vs Multi-Sensor", "✅ Test edildi + Prioritization"),
-    ("Gece Vardiyası", "✅ Test edildi"),
-    ("Filtre Tıkanıklığı", "⏳ Future work"),
-]
-
-for name, status in scenarios:
-    print(f"  {status} | {name}")
-
-print("\n" + "="*55)
-print("🎉 GERÇEKÇİ SENARYOLAR TEST EDİLDİ!")
-print("="*55 + "\n")
-
-print("💡 INSIGHT'LER:")
-print("  1. ✅ Multi-sensor fault detection çalışıyor")
-print("  2. ✅ Alert prioritization doğru (FAULT > PRE_FAULT)")
-print("  3. ✅ Gradual degradation ML ile yakalanıyor")
-print("  4. ✅ Sudden shock anında tespit ediliyor")
-print("  5. ⏳ Boolean sensor'lar eklenebilir (future)")
-print("\n")
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

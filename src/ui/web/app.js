@@ -4,6 +4,19 @@
  * v2: Usta Başı soru-cevap entegrasyonu, warn_level desteği
  */
 
+// ─── Makine Tipi Eşleştirmesi ───────────────────────────────────────────────
+const MACHINE_TYPES = {
+  HPR001: { type: 'Dikey Pres', icon: '🔵' },
+  HPR002: { type: 'Yatay Pres', icon: '🟠' },
+  HPR003: { type: 'Dikey Pres', icon: '🔵' },
+  HPR004: { type: 'Dikey Pres', icon: '🔵' },
+  HPR005: { type: 'Dikey Pres', icon: '🔵' },
+  HPR006: { type: 'Yatay Pres', icon: '🟠' },
+  HPR011: { type: 'Dikey Pres', icon: '🔵' },
+  HPR012: { type: 'Dikey Pres', icon: '🔵' },
+  HPR013: { type: 'Dikey Pres', icon: '🔵' },
+};
+
 // ─── Durum ─────────────────────────────────────────────────────────────────
 const state = {
   machines:     {},
@@ -36,8 +49,13 @@ const DIAGNOSIS_NAMES = {
   alt_ejektor_sikismasi: {icon: '🔩', label: 'Ejektör Sıkışması'},
   yatay_pres_hidrolik_kayma_drift: {icon: '📐', label: 'Hidrolik Kayma'},
 };
-function execBadge(execution) {
-  if (!execution || execution === '—') return ['exec-unknown', '⬜', 'Bilinmiyor'];
+function execBadge(execution, machineId) {
+  // Execution bilgisi yoksa makine tipini göster
+  if (!execution || execution === '—') {
+    const mt = MACHINE_TYPES[machineId];
+    if (mt) return ['exec-type', mt.icon, mt.type];
+    return ['exec-unknown', '⬜', 'HPR'];
+  }
   const e = execution.toUpperCase();
   if (e === 'RUNNING')  return ['exec-running', '🟢', 'Çalışıyor'];
   if (e === 'IDLE')     return ['exec-idle',    '🟡', 'Bekleniyor'];
@@ -56,7 +74,8 @@ function buildCardHTML(machine) {
   const { id, execution, severity, risk_score, sensors } = machine;
   const cls   = riskClass(risk_score);
   const color = riskColor(cls);
-  const [execClass, execIcon, execLabel] = execBadge(execution);
+  const [execClass, execIcon, execLabel] = execBadge(execution, id);
+  const mt = MACHINE_TYPES[id] || { type: 'HPR', icon: '⚙️' };
 
   // Sensörler — max 5, kritik üste
   const sorted = [...(sensors||[])].sort((a,b)=>(b.pct||0)-(a.pct||0)).slice(0,5);

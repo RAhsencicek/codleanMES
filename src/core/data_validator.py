@@ -15,7 +15,7 @@ Kontroller:
 import json
 import logging
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 
 log = logging.getLogger("validator")
 
@@ -77,6 +77,43 @@ def _looks_numeric(s: str) -> bool:
     return any(c.isdigit() for c in s)
 
 
+def _is_cnc_program_code(s: str) -> bool:
+    """
+    CNC program kodlarını tespit et (O0048, G0Z2M9, vb.)
+    Bu değerler sensör verisi değil, operasyon bilgileridir.
+    """
+    import re
+    # CNC program kodu paternleri: O0048, G0Z2M9, M0, vb.
+    cnc_patterns = [
+        r'^O\d+',          # Program numarası: O0048, O0000
+        r'^G\d+',          # G-kodu: G01, G02, G0Z2M9
+        r'^M\d+',          # M-kodu: M0, M03, M05
+        r'^T\d+',          # Takım numarası: T01, T02
+        r'^S\d+',          # Spindle hızı: S1000, S2000
+        r'^X\d+',          # X ekseni: X100.5
+        r'^Y\d+',          # Y ekseni: Y200.3
+        r'^Z\d+',          # Z ekseni: Z50.1
+    ]
+    return any(re.match(pattern, s.upper()) for pattern in cnc_patterns)
+
+
+def _is_operation_description(s: str) -> bool:
+    """
+    Operasyon açıklamalarını tespit et: (155 LIK TUM ISLEME OP 1), (60MM 2.OPS), vb.
+    Bu değerler parantez içinde veya belirli formatlarda gelen metinlerdir.
+    """
+    # Parantez içinde değerler: (60MM 2.OPS), (UZUN 155MM)
+    if s.startswith('(') and s.endswith(')'):
+        return True
+    # Yüzde işareti içeren değerler: O0000%
+    if s.endswith('%'):
+        return True
+    # Virgülle ayrılmış sıfırlar: 00,00,00,00... (muhtemelen boş sensör verisi)
+    if s.replace(',', '').replace('0', '').strip() == '':
+        return True
+    return False
+
+
 def safe_numeric(value) -> float | None:
     """
     String result alanını güvenle float'a çevirir.
@@ -100,6 +137,14 @@ def safe_numeric(value) -> float | None:
         # Bilinen metin değerleri → sessiz DEBUG
         if s.upper() in _KNOWN_TEXT_VALUES:
             log.debug("METIN_ALAN | '%s' → metin olarak işlenecek", s)
+            return None
+        # CNC program kodları → DEBUG (operasyon bilgisi)
+        if _is_cnc_program_code(s):
+            log.debug("CNC_KOD | '%s' → CNC program kodu, atlanıyor", s)
+            return None
+        # Operasyon açıklamaları → DEBUG
+        if _is_operation_description(s):
+            log.debug("OPERASYON | '%s' → operasyon açıklaması, atlanıyor", s)
             return None
         # Rakam içeriyorsa → gerçek bir parse anomalisi olabilir, WARNING
         if _looks_numeric(s):
@@ -237,7 +282,7 @@ def check_startup(machine_id: str, execution: str | None, startup_state: dict) -
 
     if curr == "RUNNING" and prev.upper() in ("IDLE", "STOPPED", "INTERRUPTED", ""):
         startup_state.setdefault(machine_id, {})["startup_ts"] = (
-            datetime.utcnow().isoformat()
+            datetime.now(UTC).isoformat()
         )
         log.info("STARTUP_DETECTED | %s", machine_id)
 
@@ -247,7 +292,7 @@ def check_startup(machine_id: str, execution: str | None, startup_state: dict) -
     if ts_str:
         try:
             since = (
-                datetime.utcnow() - datetime.fromisoformat(ts_str)
+                datetime.now(UTC) - datetime.fromisoformat(ts_str)
             ).total_seconds() / 60
             if since < STARTUP_MINUTES:
                 return True  # Hâlâ ısınma döneminde

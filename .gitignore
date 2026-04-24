@@ -15,3 +15,9 @@ rich_context_windows.json
 # .env.example git'e gider (şablон), .env GİTMEZ (gerçek değerler)
 .env
 *.env
+
+# Backup dosyaları
+*.backup_old
+
+# Qoder IDE
+.qoder/
