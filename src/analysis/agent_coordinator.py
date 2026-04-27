@@ -30,6 +30,8 @@ from typing import Optional
 from src.analysis.diagnosis_agent import DiagnosisAgent, get_diagnosis_agent
 from src.analysis.action_agent import ActionAgent, get_action_agent, action_plan_to_dict
 from src.analysis.root_cause_agent import RootCauseAgent, get_root_cause_agent, root_cause_result_to_dict
+from src.analysis.prediction_agent import PredictionAgent, get_prediction_agent, prediction_result_to_dict
+from src.analysis.report_agent import ReportAgent, get_report_agent, report_result_to_dict
 
 log = logging.getLogger("agent_coordinator")
 
@@ -358,15 +360,15 @@ class AgentCoordinator:
         """
         Tahmin Ajanı — Trendleri analiz eder, gelecekte ne olabileceğini söyler.
 
-        TODO: PredictionAgent implementasyonu Task 1.2'de yapılacak.
-        Şimdilik yer tutucu döndürür.
+        PredictionAgent'i çağırır, sonucu dict olarak döndürür.
+        API çalışmazsa yerel matematiksel hesaplamalarla tahmin üretir
+        (graceful degradation).
         """
-        # TODO: PredictionAgent implementasyonu Task 1.2'de yapılacak
-        return {
-            "status": "placeholder",
-            "message": "Prediction Agent henüz implement edilmedi",
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
+        agent = get_prediction_agent()
+        result = await agent.predict(context)
+        result_dict = prediction_result_to_dict(result)
+        result_dict["status"] = "success"
+        return result_dict
 
     async def _call_action_agent(self, context: dict, prior_results: dict) -> dict:
         """
@@ -395,18 +397,16 @@ class AgentCoordinator:
 
     async def _call_report_agent(self, context: dict, all_results: dict) -> dict:
         """
-        Rapor Ajanı — Tüm ajan çıktılarını derleyip tek bir özete dönüştürür.
+        Rapor Ajanı — Tüm ajan çıktılarını derleyip 4 farklı formatta rapor üretir.
 
-        TODO: ReportAgent implementasyonu Task 1.2'de yapılacak.
-        Şimdilik yer tutucu döndürür.
+        ReportAgent'i çağırır, sonucu dict olarak döndürür.
+        API çalışmazsa yerel şablonlarla rapor üretir (graceful degradation).
         """
-        # TODO: ReportAgent implementasyonu Task 1.2'de yapılacak
-        return {
-            "status": "placeholder",
-            "message": "Report Agent henüz implement edilmedi",
-            "inputs": list(all_results.keys()),
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
+        agent = get_report_agent()
+        result = await agent.generate_report(context=context, prior_results=all_results)
+        result_dict = report_result_to_dict(result)
+        result_dict["status"] = "success"
+        return result_dict
 
 
 # ─── Singleton ────────────────────────────────────────────────────────────────
