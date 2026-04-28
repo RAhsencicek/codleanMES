@@ -13,12 +13,16 @@ Endpoint'ler:
   GET  /stream         → Server-Sent Events (2sn)
 """
 
+import asyncio
 import json
+import logging
 import os
 import sys
 import time
-from collections import OrderedDict
-from datetime import datetime
+import uuid
+from collections import OrderedDict, defaultdict
+from datetime import datetime, timezone
+from functools import wraps
 from pathlib import Path
 from flask import Flask, jsonify, Response, send_from_directory, request
 
@@ -39,6 +43,61 @@ app = Flask(
     static_folder=str(STATIC_DIR),
     static_url_path='',
 )
+
+# ─── Async-Flask Bridge ──────────────────────────────────────────────────────
+def async_route(f):
+    """Flask route'larında async fonksiyon çalıştırmak için decorator."""
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        loop = asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(f(*args, **kwargs))
+        finally:
+            loop.close()
+    return wrapper
+
+# ─── Global Coordinator (lazy init) ──────────────────────────────────────────
+_multi_agent_coordinator = None
+
+def get_coordinator():
+    """AgentCoordinator singleton — tembel başlatma."""
+    global _multi_agent_coordinator
+    if _multi_agent_coordinator is None:
+        from src.analysis.agent_coordinator import AgentCoordinator
+        _multi_agent_coordinator = AgentCoordinator()
+    return _multi_agent_coordinator
+
+# ─── Report Store (in-memory + optional file persistence) ────────────────────
+_report_store = {}  # {report_id: report_data}
+_MAX_REPORT_STORE = 50
+
+def _store_report(report_id: str, data: dict):
+    """Raporu sakla (max 50 entry, en eski silinir)."""
+    global _report_store
+    if len(_report_store) >= _MAX_REPORT_STORE:
+        oldest_key = next(iter(_report_store))
+        del _report_store[oldest_key]
+    _report_store[report_id] = data
+
+# ─── Rate Limiting ───────────────────────────────────────────────────────────
+_rate_limits = defaultdict(list)
+
+def check_rate_limit(machine_id: str, max_requests: int = 5, window: int = 60) -> bool:
+    """Aynı makine için dakikada max 5 istek."""
+    now = time.time()
+    requests = [t for t in _rate_limits[machine_id] if now - t < window]
+    if len(requests) >= max_requests:
+        return False
+    requests.append(now)
+    _rate_limits[machine_id] = requests
+    return True
+
+# ─── Performance Tracking ────────────────────────────────────────────────────
+_performance_stats = {
+    "total_requests": 0,
+    "total_execution_time": 0.0,
+    "cache_hits": 0,
+}
 
 # ─── Limitleri yükle ─────────────────────────────────────────────────────────
 def _load_limits():
@@ -427,6 +486,68 @@ def _build_context_for(machine_id: str, machine_payload: dict) -> dict:
         "similar_past_events": similar,
     }
 
+# ─── Context Builder için Machine Data Hazırlama ─────────────────────────────
+def _build_machine_data_for_context(machine_id: str) -> dict:
+    """
+    state.json'dan context_builder.build() için machine_data dict'i oluşturur.
+    EWMA ortalamaları sensör değeri, buffer'dan trend eğimi hesaplanır.
+    """
+    state = read_state()
+    ms = state.get(machine_id, {})
+
+    # Sensör değerleri: EWMA ortalamadan
+    sensors = {}
+    for sensor, val in (ms.get("ewma_mean") or {}).items():
+        if val is not None:
+            sensors[sensor] = round(val, 2)
+
+    # Trend bilgisi: buffer'dan basit eğim hesabı (10 sn örnekleme varsayımı)
+    trend_info = {}
+    for sensor, buf in (ms.get("buffers") or {}).items():
+        if isinstance(buf, list) and len(buf) >= 2:
+            # saat başına eğim: (son - ilk) / n * 360
+            slope = (buf[-1] - buf[0]) / max(len(buf), 1) * 360
+            trend_info[sensor] = round(slope, 4)
+
+    # Boolean sensörler: kaç dakikadır aktif?
+    booleans = {}
+    for sensor, ts_str in (ms.get("bool_active_since") or {}).items():
+        if ts_str:
+            try:
+                since = datetime.fromisoformat(ts_str)
+                minutes = (datetime.now(timezone.utc) - since).total_seconds() / 60
+                booleans[sensor] = round(minutes, 1)
+            except Exception:
+                booleans[sensor] = 0.0
+        else:
+            booleans[sensor] = None
+
+    # Çalışma süresi
+    startup_ts = ms.get("startup_ts")
+    operating_minutes = 0.0
+    if startup_ts:
+        try:
+            operating_minutes = round((time.time() - startup_ts) / 60, 1)
+        except Exception:
+            pass
+
+    return {
+        "sensors": sensors,
+        "trend_info": trend_info,
+        "risk_score": ms.get("risk_score", 0.0) or 0.0,
+        "severity": ms.get("severity", "NORMAL") or "NORMAL",
+        "operating_minutes": operating_minutes,
+        "last_alert_source": ms.get("last_alert_source", "") or "",
+        "alert_count": ms.get("alert_count", 0) or 0,
+        "confidence": ms.get("confidence", 0.0) or 0.0,
+        "last_alerts": ms.get("last_alerts", []) or [],
+        "diagnosis": ms.get("diagnosis", "") or "",
+        "diagnosis_desc": ms.get("diagnosis_desc", "") or "",
+        "last_ml_features": ms.get("last_ml_features", {}) or {},
+        "booleans": booleans,
+    }
+
+
 # ─── Endpoint'ler ─────────────────────────────────────────────────────────────
 
 @app.route("/")
@@ -558,10 +679,190 @@ def stream():
     )
 
 
+# ─── Multi-Agent API Endpoint'leri ───────────────────────────────────────────
+
+@app.route("/api/multi-agent/analyze/<machine_id>", methods=["POST"])
+@async_route
+async def api_multi_agent_analyze(machine_id):
+    """
+    Multi-agent analiz başlat.
+
+    Query params:
+    - force: bool (cache'i atla)
+    - mode: str (rapor modu: technician/manager/formal/emergency — varsayılan: hepsi)
+    """
+    _performance_stats["total_requests"] += 1
+    start_time = time.time()
+
+    # 1. Makine ID doğrulama
+    if not machine_id or not machine_id.startswith("HPR"):
+        return jsonify({"error": "Geçersiz makine ID. HPR ile başlamalı."}), 400
+
+    # 2. Rate limit kontrolü
+    if not check_rate_limit(machine_id):
+        return jsonify({"error": "Rate limit aşıldı. Dakikada max 5 istek."}), 429
+
+    # 3. State'den makine verisi oku
+    state = read_state()
+    if machine_id not in state:
+        return jsonify({"error": f"{machine_id} için state verisi bulunamadı."}), 404
+
+    # 4. Context oluştur
+    try:
+        from pipeline import context_builder
+        machine_data = _build_machine_data_for_context(machine_id)
+        context = context_builder.build(machine_id, machine_data, LIMITS, str(RULES_PATH))
+    except Exception as e:
+        logger = logging.getLogger(__name__)
+        logger.exception("Context oluşturma hatası:")
+        return jsonify({"error": f"Context oluşturulamadı: {str(e)}"}), 500
+
+    # Query params
+    force = request.args.get("force", "false").lower() in ("true", "1", "yes")
+    mode = request.args.get("mode", "all").lower()
+
+    # 5. Coordinator'ı al ve analiz et
+    try:
+        coordinator = get_coordinator()
+        result = await coordinator.analyze(context, force=force)
+    except Exception as e:
+        logger = logging.getLogger(__name__)
+        logger.exception("Multi-agent analiz hatası:")
+        return jsonify({
+            "success": False,
+            "machine_id": machine_id,
+            "error": f"Analiz sırasında hata oluştu: {str(e)}",
+            "fallback_message": "Multi-agent sistem şu an yanıt veremiyor. Lütfen daha sonra tekrar deneyin.",
+        }), 500
+
+    # 6. Rapor verilerini çıkar
+    execution_time = time.time() - start_time
+    _performance_stats["total_execution_time"] += execution_time
+
+    report_data = result.get("report", {}) or {}
+    risk_level = result.get("risk_level", "normal")
+    risk_score = context.get("risk_score", 0.0)
+
+    # Rapor ID üret
+    report_id = report_data.get("report_id") if isinstance(report_data, dict) else None
+    if not report_id:
+        report_id = f"RPT-{machine_id}-{datetime.now().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:6]}"
+
+    # 7. Raporu sakla
+    report_payload = {
+        "report_id": report_id,
+        "machine_id": machine_id,
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "risk_score": risk_score,
+        "risk_level": risk_level,
+        "execution_time_sec": round(execution_time, 2),
+        "agents_used": result.get("agents_called", []),
+        "report": report_data,
+        "diagnosis": result.get("diagnosis"),
+        "root_cause": result.get("root_cause"),
+        "prediction": result.get("prediction"),
+        "action": result.get("action"),
+    }
+    _store_report(report_id, report_payload)
+
+    # 8. Yanıt oluştur
+    response = {
+        "success": True,
+        "machine_id": machine_id,
+        "report_id": report_id,
+        "risk_score": round(risk_score, 1),
+        "risk_level": risk_level,
+        "execution_time": round(execution_time, 2),
+        "agents_used": result.get("agents_called", []),
+        "report": report_data,
+        "metadata": {
+            "cache_hit": result.get("cache_hit", False),
+            "throttled": report_data.get("status") == "throttled" if isinstance(report_data, dict) else False,
+            "force": force,
+            "mode": mode,
+        },
+    }
+
+    return jsonify(response)
+
+
+@app.route("/api/multi-agent/status", methods=["GET"])
+def api_multi_agent_status():
+    """Multi-agent sistem durumu."""
+    coordinator = get_coordinator()
+
+    # Agent durumlarını kontrol et
+    agent_statuses = {}
+    try:
+        from src.analysis.diagnosis_agent import get_diagnosis_agent
+        from src.analysis.root_cause_agent import get_root_cause_agent
+        from src.analysis.prediction_agent import get_prediction_agent
+        from src.analysis.action_agent import get_action_agent
+        from src.analysis.report_agent import get_report_agent
+
+        agents = {
+            "diagnosis": get_diagnosis_agent,
+            "root_cause": get_root_cause_agent,
+            "prediction": get_prediction_agent,
+            "action": get_action_agent,
+            "report": get_report_agent,
+        }
+
+        for name, getter in agents.items():
+            try:
+                agent = getter()
+                agent_statuses[name] = {
+                    "ready": getattr(agent, "is_ready", True),
+                    "fallback_capable": True,  # Tüm ajanlar yerel şablonla çalışabilir
+                }
+            except Exception:
+                agent_statuses[name] = {
+                    "ready": False,
+                    "fallback_capable": True,
+                }
+    except Exception as e:
+        agent_statuses = {"error": str(e)}
+
+    # Performans istatistikleri
+    total_req = _performance_stats["total_requests"]
+    total_exec = _performance_stats["total_execution_time"]
+    avg_exec = round(total_exec / total_req, 2) if total_req > 0 else 0.0
+
+    return jsonify({
+        "active": True,
+        "coordinator_ready": coordinator is not None,
+        "cache": _api_cache.stats(),
+        "agent_statuses": agent_statuses,
+        "performance": {
+            "avg_execution_time": avg_exec,
+            "total_requests": total_req,
+            "cache_hit_rate": 0.0,  # Detaylı cache tracking eklenebilir
+        },
+        "report_store": {
+            "stored_reports": len(_report_store),
+            "max_reports": _MAX_REPORT_STORE,
+        },
+        "timestamp": datetime.now().isoformat(),
+    })
+
+
+@app.route("/api/multi-agent/reports/<report_id>", methods=["GET"])
+def api_get_report(report_id):
+    """Daha önce oluşturulmuş raporu getir."""
+    report = _report_store.get(report_id)
+    if not report:
+        return jsonify({"error": "Rapor bulunamadı."}), 404
+    return jsonify({
+        "success": True,
+        "report": report,
+    })
+
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     print("🏭 Codlean MES Web Dashboard başlatılıyor...")
     print(f"   → http://localhost:5001")
     print(f"   Usta Başı API: /api/ask (POST)  /api/fleet (GET)")
+    print(f"   Multi-Agent API: /api/multi-agent/analyze/<machine_id> (POST)")
     print(f"   State: {STATE_PATH}")
     app.run(host="0.0.0.0", port=5001, debug=False, threaded=True)

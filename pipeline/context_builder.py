@@ -296,7 +296,6 @@ def build(
     similar_past_events = []
     try:
         from src.analysis.similarity_engine import SimilarityEngine
-        import os
         from src.core.constants import ML_TRAINING_DATA_V2_PATH
         v_path = ML_TRAINING_DATA_V2_PATH
         sim_engine = SimilarityEngine(v_path)
