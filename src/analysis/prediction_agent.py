@@ -249,7 +249,10 @@ class PredictionAgent:
         self._client = None
         self._init_error = None
 
-        key = api_key or os.environ.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
+        # API Key Rotation Manager kullan
+        from src.core.api_key_manager import get_api_key
+        
+        key = api_key or get_api_key()
 
         log.info("[PREDICTION_INIT] dotenv yüklendi: %s", _dotenv_loaded)
         log.info("[PREDICTION_INIT] API Key mevcut: %s", bool(key))
