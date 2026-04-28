@@ -865,4 +865,10 @@ if __name__ == "__main__":
     print(f"   Usta Başı API: /api/ask (POST)  /api/fleet (GET)")
     print(f"   Multi-Agent API: /api/multi-agent/analyze/<machine_id> (POST)")
     print(f"   State: {STATE_PATH}")
-    app.run(host="0.0.0.0", port=5001, debug=False, threaded=True)
+    
+    # Güvenlik: Sadece VPN interface'inde çalış (10.81.1.64)
+    # 0.0.0.0 = tüm network'lere açık (GÜVENSİZ!)
+    VPN_IP = "10.81.1.64"  # VPN network IP
+    print(f"   🚀 Sunucu başlatılıyor: http://{VPN_IP}:5001")
+    print(f"   🔒 Sadece VPN üzerinden erişilebilir")
+    app.run(host=VPN_IP, port=5001, debug=False, threaded=True)
