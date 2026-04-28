@@ -1,8 +1,8 @@
 # Codlean MES — Proje Durumu ve Yapılacaklar
 
-> **Son güncelleme:** 2026-04-24  
-> **Durum:** 🟢 Faz 1 TAMAMLANDI - Multi-Agent System canlı  
-> **Aktif Faz:** Faz 2 - Web API Entegrasyonu  
+> **Son güncelleme:** 2026-04-28  
+> **Durum:** 🟢 Faz 1-2 TAMAMLANDI - Multi-Agent System + Web API canlı  
+> **Aktif Faz:** Faz 3 - Bilgi Tabanı  
 > **Kural:** Bir şey değiştirdin mi? İlgili maddeyi güncelle. Yeni sorun buldun mu? Buraya ekle.
 
 ---
@@ -87,6 +87,12 @@ Detay için: `docs/pipeline_mimarisi.md`
 | 1.4 | Root Cause Agent - 5-Why metodolojisi ile kök neden | 2026-04-24 |
 | 1.5 | Prediction Agent - Matematiksel ETA, trend analizi, 3 senaryo | 2026-04-24 |
 | 1.6 | Report Agent - 4 rapor modu (Teknisyen/Yönetici/Formal/Acil) | 2026-04-24 |
+| **FAZ 2** | **Web API Entegrasyonu + Canlı Test** | **2026-04-28** |
+| 2.1 | Multi-Agent API endpoints (3 endpoint) | 2026-04-28 |
+| 2.2 | Rate limiting (5 req/dk/makine) | 2026-04-28 |
+| 2.3 | Report store (LRU eviction, max 50) | 2026-04-28 |
+| 2.4 | Unit tests (8/8 geçti) | 2026-04-28 |
+| 2.5 | Canlı test (0 hata) | 2026-04-28 |
 
 ---
 
