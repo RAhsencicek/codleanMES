@@ -1,0 +1,51 @@
+{
+  "_metadata": {
+    "version": "2.0",
+    "description": "Veri tabanlı (Data-Driven) nedensel bakım kuralları. 15.2 milyon mesajlık Local Backfill analizi (3 gün) üzerinden çıkarılan pre-fault örüntüleri matematikle ispatlanarak yazılmıştır.",
+    "target_machines": ["HPR", "TST"]
+  },
+
+  "rules": {
+    "testere_bicak_korelmesi": {
+      "condition": {
+        "saw_speed_slope": "> 0.50",
+        "cut_time_slope": "> 0.10"
+      },
+      "risk_multiplier": 35.0,
+      "explanation_tr": "Testere devri ve kesim süresi eşzamanlı olarak istikrarlı şekilde artıyor. Bu sinsi artış bıçağın köreldiğine ve motorun (saw_speed) fazladan devir yaparak kompanzasyon yapmaya çalıştığına işaret eder.",
+      "action_tr": "Testere bıçağını bileyleyin veya değiştirin. Motor akımını kontrol edin.",
+      "evidence_source": "TST003 - 4173 faults (Avg slope: 0.69 saw_speed, 0.19 cut_time)"
+    },
+
+    "sinsi_ic_kacak_isisi": {
+      "condition": {
+        "oil_tank_temperature_slope": "> 0.003",
+        "oil_tank_temperature": "> 39.0"
+      },
+      "risk_multiplier": 25.0,
+      "explanation_tr": "Yağ sıcaklığı yavaş ama çok istikrarlı şekilde (dakikada +0.005 derece) tırmanıyor. Valf veya silindirlerdeki iç kaçaklar sürtünmeyle hidrolik enerjiyi ısıya çeviriyor olabilir.",
+      "action_tr": "Ana kontrol bloklarındaki iç kaçakları (sızdırmazlıkları) ve soğutma kulesi eşanjörlerini kontrol edin.",
+      "evidence_source": "HPR005 - 5212 faults (Avg slope: 0.0057)"
+    },
+
+    "ana_basinc_regulator_zorlanmasi": {
+      "condition": {
+        "main_pressure_slope": "> 0.05"
+      },
+      "risk_multiplier": 40.0,
+      "explanation_tr": "Ana basınç pompası veya regülatörü yük altında. Sistem basıncı sabit kalması gerekirken dakikada ortalama 0.06 bar sinsi bir tırmanış gösteriyor.",
+      "action_tr": "Oransal basınç valfinin (proportional valve) veya pompanın set değerlerini doğrula. Filtrelerde daralma olabilir.",
+      "evidence_source": "HPR011 - 2 fault (Avg slope: 0.0609)"
+    },
+
+    "infeed_mekanik_sikisma": {
+      "condition": {
+        "vertical_infeed_speed_volatility": "> 5.0"
+      },
+      "risk_multiplier": 30.0,
+      "explanation_tr": "Sürücü (Infeed) motorunda ani hız oynamaları (yüksek volatilite) ve sapmalar gözlemleniyor. Mekanik raylarda kirlenme, yağsızlık veya sıkışma sebebiyle motor titreme yapıyor olabilir.",
+      "action_tr": "Sürücü eksen raylarını (guide rails) temizleyip gresleyin. Motor sürücü parametrelerini kontrol edin.",
+      "evidence_source": "HPR013/HPR012 Volatilite analizi"
+    }
+  }
+}

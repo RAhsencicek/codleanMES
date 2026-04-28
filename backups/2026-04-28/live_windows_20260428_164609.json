@@ -1,0 +1,758 @@
+{
+  "meta": {
+    "started_at": "2026-04-20T07:03:55.105285+00:00",
+    "updated_at": "2026-04-24T15:27:29.550979+00:00",
+    "normal_windows_total": 78,
+    "fault_windows_total": 10
+  },
+  "normal_windows": {
+    "HPR012": [
+      {
+        "ts": "2026-04-19T20:58:47.624000+00:00",
+        "readings": {
+          "oil_tank_temperature": 32.479687,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-19T20:58:48.642000+00:00",
+        "readings": {
+          "oil_tank_temperature": 32.470314,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-19T20:58:49.666000+00:00",
+        "readings": {
+          "oil_tank_temperature": 32.470314,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-19T21:00:00.333000+00:00",
+        "readings": {
+          "oil_tank_temperature": 32.54531,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-19T21:00:01.359000+00:00",
+        "readings": {
+          "oil_tank_temperature": 32.554688,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-19T21:00:02.361000+00:00",
+        "readings": {
+          "oil_tank_temperature": 32.55,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T09:28:43.149252+00:00",
+        "readings": {
+          "oil_tank_temperature": 33.7875,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T09:28:43.206701+00:00",
+        "readings": {
+          "oil_tank_temperature": 33.778126,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T09:28:44.316154+00:00",
+        "readings": {
+          "oil_tank_temperature": 33.7875,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T09:34:02.804869+00:00",
+        "readings": {
+          "oil_tank_temperature": 33.85781,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T09:34:02.865013+00:00",
+        "readings": {
+          "oil_tank_temperature": 33.85781,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T09:34:02.925142+00:00",
+        "readings": {
+          "oil_tank_temperature": 33.85781,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T09:39:28.099823+00:00",
+        "readings": {
+          "oil_tank_temperature": 33.91875,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T09:39:28.161680+00:00",
+        "readings": {
+          "oil_tank_temperature": 33.92344,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T09:39:28.221510+00:00",
+        "readings": {
+          "oil_tank_temperature": 33.92344,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T10:00:00.447452+00:00",
+        "readings": {
+          "oil_tank_temperature": 34.22344,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T10:00:01.633980+00:00",
+        "readings": {
+          "oil_tank_temperature": 34.228127,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T10:00:01.705600+00:00",
+        "readings": {
+          "oil_tank_temperature": 34.228127,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T11:00:00.720071+00:00",
+        "readings": {
+          "oil_tank_temperature": 34.978127,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T11:00:01.878750+00:00",
+        "readings": {
+          "oil_tank_temperature": 34.978127,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T11:00:03.128510+00:00",
+        "readings": {
+          "oil_tank_temperature": 34.978127,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T12:00:00.499339+00:00",
+        "readings": {
+          "oil_tank_temperature": 35.64375,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T12:00:01.567718+00:00",
+        "readings": {
+          "oil_tank_temperature": 35.64375,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T12:00:02.574587+00:00",
+        "readings": {
+          "oil_tank_temperature": 35.63906,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T13:00:00.709694+00:00",
+        "readings": {
+          "oil_tank_temperature": 36.220314,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T13:00:01.751031+00:00",
+        "readings": {
+          "oil_tank_temperature": 36.225,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T13:00:02.747680+00:00",
+        "readings": {
+          "oil_tank_temperature": 36.215626,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T14:00:00.754155+00:00",
+        "readings": {
+          "oil_tank_temperature": 36.7125,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T14:00:01.815389+00:00",
+        "readings": {
+          "oil_tank_temperature": 36.717186,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T14:00:02.810174+00:00",
+        "readings": {
+          "oil_tank_temperature": 36.7125,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T15:00:00.677244+00:00",
+        "readings": {
+          "oil_tank_temperature": 37.134377,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T15:00:01.576741+00:00",
+        "readings": {
+          "oil_tank_temperature": 37.134377,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T15:00:02.814590+00:00",
+        "readings": {
+          "oil_tank_temperature": 37.134377,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      }
+    ],
+    "HPR013": [
+      {
+        "ts": "2026-04-24T09:39:28.567358+00:00",
+        "readings": {
+          "oil_tank_temperature": 16.448437,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T09:39:28.635092+00:00",
+        "readings": {
+          "oil_tank_temperature": 16.448437,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T09:39:28.701085+00:00",
+        "readings": {
+          "oil_tank_temperature": 16.439062,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T10:00:00.518583+00:00",
+        "readings": {
+          "oil_tank_temperature": 15.107813,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T10:00:01.773516+00:00",
+        "readings": {
+          "oil_tank_temperature": 15.107813,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T10:00:01.849671+00:00",
+        "readings": {
+          "oil_tank_temperature": 15.103125,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T11:00:00.829449+00:00",
+        "readings": {
+          "oil_tank_temperature": 18.1875,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T11:00:01.986057+00:00",
+        "readings": {
+          "oil_tank_temperature": 18.1875,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T11:00:03.202172+00:00",
+        "readings": {
+          "oil_tank_temperature": 18.1875,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T12:00:00.562275+00:00",
+        "readings": {
+          "oil_tank_temperature": 19.410938,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T12:00:01.632375+00:00",
+        "readings": {
+          "oil_tank_temperature": 19.401562,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T12:00:02.635641+00:00",
+        "readings": {
+          "oil_tank_temperature": 19.40625,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T13:00:00.772159+00:00",
+        "readings": {
+          "oil_tank_temperature": 19.532812
+        }
+      },
+      {
+        "ts": "2026-04-24T13:00:01.812729+00:00",
+        "readings": {
+          "oil_tank_temperature": 19.523438
+        }
+      },
+      {
+        "ts": "2026-04-24T13:00:02.809500+00:00",
+        "readings": {
+          "oil_tank_temperature": 19.528126,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T14:00:00.781552+00:00",
+        "readings": {
+          "oil_tank_temperature": 18.829687,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T14:00:01.791345+00:00",
+        "readings": {
+          "oil_tank_temperature": 18.825,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T14:00:02.847103+00:00",
+        "readings": {
+          "oil_tank_temperature": 18.829687,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T15:00:00.639588+00:00",
+        "readings": {
+          "oil_tank_temperature": 19.654688,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T15:00:01.661595+00:00",
+        "readings": {
+          "oil_tank_temperature": 19.65,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T15:00:03.237075+00:00",
+        "readings": {
+          "oil_tank_temperature": 19.654688,
+          "main_pressure": 0.0,
+          "vertical_infeed_speed": 0.0
+        }
+      }
+    ],
+    "HPR006": [
+      {
+        "ts": "2026-04-24T12:10:21.679692+00:00",
+        "readings": {
+          "horizontal_press_pressure": 0.0,
+          "horitzonal_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T12:10:22.801177+00:00",
+        "readings": {
+          "horizontal_press_pressure": 0.0,
+          "horitzonal_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T12:10:23.719844+00:00",
+        "readings": {
+          "horizontal_press_pressure": 0.0,
+          "horitzonal_infeed_speed": 0.0
+        }
+      }
+    ],
+    "HPR005": [
+      {
+        "ts": "2026-04-24T12:10:25.831432+00:00",
+        "readings": {
+          "lower_ejector_pressure": 0.028935185,
+          "main_pressure": 0.0,
+          "horizontal_press_pressure": 0.0,
+          "vertical_infeed_speed": 0.0,
+          "horitzonal_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T12:10:26.838685+00:00",
+        "readings": {
+          "lower_ejector_pressure": 0.028935185,
+          "main_pressure": 0.0,
+          "horizontal_press_pressure": 0.0,
+          "vertical_infeed_speed": 0.0,
+          "horitzonal_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T12:10:27.904301+00:00",
+        "readings": {
+          "lower_ejector_pressure": 0.028935185,
+          "main_pressure": 0.0,
+          "horizontal_press_pressure": 0.0,
+          "vertical_infeed_speed": 0.0,
+          "horitzonal_infeed_speed": 0.0
+        }
+      }
+    ],
+    "HPR002": [
+      {
+        "ts": "2026-04-24T13:16:23.392500+00:00",
+        "readings": {
+          "horizontal_press_pressure": 0.0,
+          "horitzonal_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T13:16:24.424929+00:00",
+        "readings": {
+          "horizontal_press_pressure": 0.0,
+          "horitzonal_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T13:16:25.523097+00:00",
+        "readings": {
+          "horizontal_press_pressure": 0.0,
+          "horitzonal_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T14:00:00.641357+00:00",
+        "readings": {
+          "horizontal_press_pressure": 0.014467592,
+          "horitzonal_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T14:00:01.646098+00:00",
+        "readings": {
+          "horizontal_press_pressure": 0.014467592,
+          "horitzonal_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T14:00:02.783893+00:00",
+        "readings": {
+          "horizontal_press_pressure": 0.014467592,
+          "horitzonal_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T15:00:00.255313+00:00",
+        "readings": {
+          "horizontal_press_pressure": 0.014467592,
+          "horitzonal_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T15:00:01.090858+00:00",
+        "readings": {
+          "horizontal_press_pressure": 0.014467592,
+          "horitzonal_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T15:00:02.221798+00:00",
+        "readings": {
+          "horizontal_press_pressure": 0.014467592,
+          "horitzonal_infeed_speed": 0.0
+        }
+      }
+    ],
+    "HPR001": [
+      {
+        "ts": "2026-04-24T13:16:23.450292+00:00",
+        "readings": {
+          "lower_ejector_pressure": 0.0,
+          "main_pressure": 0.0,
+          "horizontal_press_pressure": 0.0,
+          "vertical_infeed_speed": 0.0,
+          "horitzonal_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T13:16:24.517580+00:00",
+        "readings": {
+          "lower_ejector_pressure": 0.0,
+          "main_pressure": 0.0,
+          "horizontal_press_pressure": 0.0,
+          "vertical_infeed_speed": 0.0,
+          "horitzonal_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T13:16:25.466569+00:00",
+        "readings": {
+          "lower_ejector_pressure": 0.0,
+          "main_pressure": 0.0,
+          "horizontal_press_pressure": 0.0,
+          "vertical_infeed_speed": 0.0,
+          "horitzonal_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T14:00:00.708852+00:00",
+        "readings": {
+          "lower_ejector_pressure": 0.028935185,
+          "main_pressure": 0.0,
+          "horizontal_press_pressure": 0.014467592,
+          "vertical_infeed_speed": 0.0,
+          "horitzonal_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T14:00:01.731616+00:00",
+        "readings": {
+          "lower_ejector_pressure": 0.028935185,
+          "main_pressure": 0.0,
+          "horizontal_press_pressure": 0.014467592,
+          "vertical_infeed_speed": 0.0,
+          "horitzonal_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T14:00:02.714049+00:00",
+        "readings": {
+          "lower_ejector_pressure": 0.028935185,
+          "main_pressure": 0.0,
+          "horizontal_press_pressure": 0.014467592,
+          "vertical_infeed_speed": 0.0,
+          "horitzonal_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T15:00:00.311430+00:00",
+        "readings": {
+          "lower_ejector_pressure": 0.028935185,
+          "main_pressure": 0.0,
+          "horizontal_press_pressure": 0.014467592,
+          "vertical_infeed_speed": 0.0,
+          "horitzonal_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T15:00:01.160863+00:00",
+        "readings": {
+          "lower_ejector_pressure": 0.028935185,
+          "main_pressure": 0.0,
+          "horizontal_press_pressure": 0.014467592,
+          "vertical_infeed_speed": 0.0,
+          "horitzonal_infeed_speed": 0.0
+        }
+      },
+      {
+        "ts": "2026-04-24T15:00:02.173069+00:00",
+        "readings": {
+          "lower_ejector_pressure": 0.028935185,
+          "main_pressure": 0.0,
+          "horizontal_press_pressure": 0.014467592,
+          "vertical_infeed_speed": 0.0,
+          "horitzonal_infeed_speed": 0.0
+        }
+      }
+    ]
+  },
+  "fault_windows": {
+    "HPR013": [
+      {
+        "ts": "2026-04-24T10:11:01.628137+00:00",
+        "readings": {
+          "oil_tank_temperature": 15.604688,
+          "vertical_infeed_speed": 313.65973
+        },
+        "faults": [
+          "vertical_infeed_speed"
+        ]
+      },
+      {
+        "ts": "2026-04-24T12:33:49.962694+00:00",
+        "readings": {
+          "oil_tank_temperature": 19.621876,
+          "vertical_infeed_speed": 348.67932
+        },
+        "faults": [
+          "vertical_infeed_speed"
+        ]
+      },
+      {
+        "ts": "2026-04-24T12:33:58.080499+00:00",
+        "readings": {
+          "oil_tank_temperature": 19.617188,
+          "vertical_infeed_speed": 408.06613
+        },
+        "faults": [
+          "vertical_infeed_speed"
+        ]
+      },
+      {
+        "ts": "2026-04-24T13:09:44.050655+00:00",
+        "readings": {
+          "oil_tank_temperature": 19.476562,
+          "vertical_infeed_speed": 432.42596
+        },
+        "faults": [
+          "vertical_infeed_speed"
+        ]
+      },
+      {
+        "ts": "2026-04-24T15:05:26.801890+00:00",
+        "readings": {
+          "oil_tank_temperature": 19.710938,
+          "vertical_infeed_speed": 344.11508
+        },
+        "faults": [
+          "vertical_infeed_speed"
+        ]
+      },
+      {
+        "ts": "2026-04-24T15:25:48.151130+00:00",
+        "readings": {
+          "oil_tank_temperature": 19.729687,
+          "vertical_infeed_speed": 328.8837
+        },
+        "faults": [
+          "vertical_infeed_speed"
+        ]
+      },
+      {
+        "ts": "2026-04-24T15:25:48.196777+00:00",
+        "readings": {
+          "oil_tank_temperature": 19.725,
+          "vertical_infeed_speed": 341.06732
+        },
+        "faults": [
+          "vertical_infeed_speed"
+        ]
+      },
+      {
+        "ts": "2026-04-24T15:25:48.249418+00:00",
+        "readings": {
+          "oil_tank_temperature": 19.725,
+          "vertical_infeed_speed": 341.06732
+        },
+        "faults": [
+          "vertical_infeed_speed"
+        ]
+      },
+      {
+        "ts": "2026-04-24T15:26:38.789654+00:00",
+        "readings": {
+          "oil_tank_temperature": 19.753124,
+          "vertical_infeed_speed": 318.22397
+        },
+        "faults": [
+          "vertical_infeed_speed"
+        ]
+      },
+      {
+        "ts": "2026-04-24T15:26:39.354886+00:00",
+        "readings": {
+          "oil_tank_temperature": 19.753124,
+          "vertical_infeed_speed": 318.22397
+        },
+        "faults": [
+          "vertical_infeed_speed"
+        ]
+      }
+    ]
+  }
+}
