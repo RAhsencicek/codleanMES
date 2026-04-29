@@ -39,6 +39,8 @@
 | **BİLGİ TABANI** | **4 modül: Machine Profile, Maintenance, Feedback, Inventory** | ✅ **FAZ 3 TAMAMLANDI** |
 | **PRODUCTION DEPLOYMENT** | **PM2, VPN, Backup, Cron** | ✅ **FAZ 4 TAMAMLANDI** |
 | **API KEY ROTATION** | **10 key, 200 request/gün, otomatik failover** | ✅ **TAMAMLANDI** |
+| **DASHBOARD İYİLEŞTİRMELERİ** | **AI Analiz, Trend, ETA göstergeleri** | ✅ **FAZ 5 TAMAMLANDI** |
+| **AI ASİSTAN (CHATBOT)** | **Doğal dil ile 4 ajana erişim** | ✅ **FAZ 6 TAMAMLANDI** |
 
 ### Eksikler / Sorunlar ❌
 
@@ -540,7 +542,247 @@ HPR002 ve HPR006 Yatay Pres — bunları ayrıca kontrol et (F5-3b tamamlanana k
 
 ---
 
-## BÖLÜM 5 — Kural Kaynakları (Önemli Ayrım)
+## BÖLÜM 5 — FAZ 5: DASHBOARD İYİLEŞTİRMELERİ
+
+> **Başlangıç:** 2026-04-29  
+> **Hedef Süre:** 1-2 gün (10-11 saat)  
+> **Öncelik:** YÜKSEK
+
+### F5-1: AI Analiz Butonu - Tam Entegrasyon
+
+**Durum:** ⬜ Planlandı  
+**Süre:** 4 saat  
+**Dosyalar:** `src/ui/dashboard/app.js`, `src/ui/dashboard/index.html`
+
+**Gereksinimler:**
+- [ ] Dashboard'da "AI Analiz Et" butonu her makine kartında
+- [ ] Tıklayınca modal açılıyor (popup)
+- [ ] Loading spinner + "AI analiz ediliyor..." mesajı
+- [ ] `/api/multi-agent/analyze/<machine_id>` çağrılıyor
+- [ ] 4 ajan raporu gösteriliyor:
+  - 🔍 Teşhis (Diagnosis)
+  - 🛠️ Aksiyon (Action)
+  - 🎯 Kök Neden (Root Cause)
+  - 📈 Tahmin (Prediction)
+- [ ] Altta feedback butonu: 👍 Faydalı / 👎 Faydasız
+- [ ] `/api/feedback` endpoint'ine gönderiliyor
+
+**Test:**
+- [ ] HPR001 için analiz → Başarılı
+- [ ] Loading animasyonu çalışıyor
+- [ ] 4 ajan raporu görünüyor
+- [ ] Feedback gönderiliyor
+
+---
+
+### F5-2: Trend Okları + ETA Göstergesi
+
+**Durum:** ⬜ Planlandı  
+**Süre:** 4 saat  
+**Dosyalar:** `src/ui/dashboard/app.js`, `src/core/state_store.py`
+
+**Gereksinimler:**
+- [ ] Her sensör için trend oku (↑ ↓ →)
+- [ ] Trend değeri gösterimi (+2°C/saat)
+- [ ] ETA hesaplama ve gösterimi
+- [ ] Renk kodları:
+  - Yeşil: Kalan süre > 2 saat
+  - Sarı: 1-2 saat
+  - Kırmızı: < 1 saat (yanıp sönen)
+- [ ] `slope_per_hour` state.json'dan okunuyor
+
+**Örnek Gösterim:**
+```
+Yağ Sıcaklığı: 36.8 °C ↑
+               └─ +2°/saat
+               └─ Limit: 81 dakika
+```
+
+**Test:**
+- [ ] Yükselen sensör → Kırmızı ok
+- [ ] Stabil sensör → Gri ok
+- [ ] ETA doğru hesaplanıyor
+
+---
+
+### F5-3: Son AI Analiz Sonucu Kartlarda
+
+**Durum:** ⬜ Planlandı  
+**Süre:** 2-3 saat  
+**Dosyalar:** `src/ui/dashboard/app.js`, `src/analysis/report_agent.py`
+
+**Gereksinimler:**
+- [ ] Her makine kartında "Son AI Analiz" bölümü
+- [ ] `/api/reports` endpoint'inden son rapor getiriliyor
+- [ ] Kısa özet gösteriliyor (ilk 100 karakter)
+- [ ] "Detay" butonu → Modal açılıyor
+- [ ] Analiz yoksa → "Henüz analiz yapılmadı"
+- [ ] Analiz > 1 saat eskiyse → "Analizi yenile" uyarısı
+
+**Örnek:**
+```
+📋 Son AI Analiz (2 saat önce):
+"Filtre tıkanıklığı şüphesi, kontrol önerilir"
+[🔍 Detay]
+```
+
+**Test:**
+- [ ] Son rapor kartta görünüyor
+- [ ] Detay butonu çalışıyor
+- [ ] Eski analiz uyarısı görünüyor
+
+---
+
+## BÖLÜM 6 — FAZ 6: AI ASİSTAN (CHATBOT)
+
+> **Başlangıç:** TBD  
+> **Hedef Süre:** 2 gün (16 saat)  
+> **Öncelik:** YÜKSEK  
+> **Konsept:** ChatGPT tarzı asistan ile doğal dil ile 4 ajana erişim
+
+### F6-1: Backend - Chat API Endpoint
+
+**Durum:** ⬜ Planlandı  
+**Süre:** 4 saat  
+**Dosyalar:** `src/app/web_server.py`, `src/analysis/chat_assistant.py` (yeni)
+
+**Gereksinimler:**
+- [ ] `/api/chat` endpoint oluşturulacak
+- [ ] Intent detection (niyet tespiti):
+  - "teşhis", "nedir", "sorun" → Diagnosis
+  - "ne yapmalıyım", "nasıl düzeltirim" → Action
+  - "ne olur", "tahmin" → Prediction
+  - "neden oldu", "sebep" → Root Cause
+- [ ] Doğal dil işleme (basit keyword matching)
+- [ ] Multi-agent desteği (birden fazla ajan çağrısı)
+- [ ] Sohbet hafızası (session-based)
+
+**Endpoint:**
+```python
+POST /api/chat
+Body: {
+  "message": "HPR001 neden sıcak?",
+  "machine_id": "HPR001",
+  "session_id": "abc123"
+}
+Response: {
+  "response": "Yağ sıcaklığı 36.8°C ve yükseliyor...",
+  "agents_used": ["diagnosis", "action"],
+  "confidence": 0.95
+}
+```
+
+**Test:**
+- [ ] Intent detection çalışıyor
+- [ ] Doğru ajan(lar) seçiliyor
+- [ ] Response doğal dilde
+
+---
+
+### F6-2: Intent Detection Modülü
+
+**Durum:** ⬜ Planlandı  
+**Süre:** 2 saat  
+**Dosyalar:** `src/analysis/intent_detector.py` (yeni)
+
+**Gereksinimler:**
+- [ ] Keyword-based intent detection
+- [ ] Türkçe kelime listesi:
+  ```python
+  INTENT_MAP = {
+    "diagnosis": ["teşhis", "sorun", "ariza", "neden", "problem"],
+    "action": ["yapmaliyim", "cozum", "onarmak", "duzelt"],
+    "prediction": ["olur", "tahmin", "gelecek", "ne zaman"],
+    "root_cause": ["sebep", "kaynak", "neden oldu"]
+  }
+  ```
+- [ ] Makine ID extraction (HPR001, HPR002, vs.)
+- [ ] Fallback: Anlaşılmadıysa → "Tekrar sorar mısınız?"
+
+**Test:**
+- [ ] "HPR001 neden sıcak?" → diagnosis
+- [ ] "Ne yapmalıyım?" → action
+- [ ] "Bu gidişle ne olur?" → prediction
+
+---
+
+### F6-3: Frontend - Floating Chat Widget
+
+**Durum:** ⬜ Planlandı  
+**Süre:** 4 saat  
+**Dosyalar:** `src/ui/dashboard/chat_widget.js`, `src/ui/dashboard/chat_widget.css`
+
+**Gereksinimler:**
+- [ ] Sağ alt köşede floating chat baloncuğu
+- [ ] Tıklayınca chat penceresi açılıyor
+- [ ] ChatGPT/Intercom tarzı tasarım
+- [ ] Mesaj gönderme (Enter tuşu)
+- [ ] Loading göstergesi
+- [ ] Markdown desteği (kalın, liste, emoji)
+- [ ] Responsive (mobilde tam ekran)
+
+**Özellikler:**
+- Hoş geldin mesajı: "Merhaba! Size nasıl yardımcı olabilirim?"
+- Hızlı aksiyon butonları: [Teşhis] [Aksiyon] [Tahmin] [Kök Neden]
+- Sohbet geçmişi (session boyunca)
+- Proaktif öneriler (kritik alarm varsa)
+
+**Test:**
+- [ ] Widget açılıp kapanıyor
+- [ ] Mesaj gönderilebiliyor
+- [ ] AI yanıtı görünüyor
+- [ ] Mobilde çalışıyor
+
+---
+
+### F6-4: Frontend - Full Page Chat
+
+**Durum:** ⬜ Planlandı  
+**Süre:** 4 saat  
+**Dosyalar:** `src/ui/dashboard/chat_page.html`, `src/ui/dashboard/chat_page.js`
+
+**Gereksinimler:**
+- [ ] Yeni sekme: [💬 AI Asistan]
+- [ ] Sol panel: Makine seçici
+- [ ] Sağ panel: Chat arayüzü
+- [ ] Sohbet geçmişi (tüm session'lar)
+- [ ] Export conversation (TXT/PDF)
+- [ ] Sohbet başına isim verme
+
+**Özellikler:**
+- Makine karşılaştırma: "HPR001 ve HPR003'ü karşılaştır"
+- Filo analizi: "Tüm makinelerin durumu nasıl?"
+- Rapor oluşturma: "Bugünkü raporları getir"
+
+**Test:**
+- [ ] Full page açılıyor
+- [ ] Makine seçimi çalışıyor
+- [ ] Sohbet kaydediliyor
+- [ ] Export çalışıyor
+
+---
+
+### F6-5: Test & İyileştirmeler
+
+**Durum:** ⬜ Planlandı  
+**Süre:** 2 saat  
+
+**Test Senaryoları:**
+- [ ] Diagnosis intent → Doğru ajan çağrılıyor
+- [ ] Action intent → Aksiyon önerileri geliyor
+- [ ] Multi-intent → Birden fazla ajan çalışıyor
+- [ ] Makine ID yoksa → "Hangi makine?" diye soruyor
+- [ ] Anlamadığında → "Tekrar sorar mısınız?"
+- [ ] API hatası → "Şu anda meşgulüm" mesajı
+
+**İyileştirmeler:**
+- [ ] Response süresi < 20 saniye
+- [ ] Hata toleransı (bir ajan başarısız olursa diğerleri devam)
+- [ ] Cache (aynı soru 10 dk tekrar çalışmaz)
+
+---
+
+## BÖLÜM 7 — Kural Kaynakları (Önemli Ayrım)
 
 Sistemde iki farklı kural türü var. Bunları karıştırmak hatalara yol açar.
 
