@@ -406,25 +406,40 @@ connect();
 
 // AI Asistan'ı aç
 function openAIAssistant() {
-  const backdrop = document.getElementById('aiModalBackdrop');
-  backdrop.classList.add('open');
+  const panel = document.getElementById('aiPanelContainer');
+  panel.classList.add('open');
   addLog('AI Asistan açıldı', 'log-info');
   
   // Input'a focus
   setTimeout(() => {
     document.getElementById('assistantInput').focus();
-  }, 300);
+  }, 400);
 }
 
 // AI Asistan'ı kapat
-function closeAIAssistant(event) {
-  // Eğer box içinde tıklandıysa kapatma
-  if (event && event.target.id !== 'aiModalBackdrop') {
-    return;
-  }
+function closeAIAssistant() {
+  const panel = document.getElementById('aiPanelContainer');
+  panel.classList.remove('open');
   
-  const backdrop = document.getElementById('aiModalBackdrop');
-  backdrop.classList.remove('open');
+  // Detail panel'i de kapat
+  closeDetailPanel();
+}
+
+// Detail panel aç
+function openDetailPanel(title, content) {
+  const detailPanel = document.getElementById('aiPanelDetail');
+  const detailTitle = document.getElementById('detailTitle');
+  const detailContent = document.getElementById('detailContent');
+  
+  detailTitle.textContent = title;
+  detailContent.innerHTML = content;
+  detailPanel.classList.add('active');
+}
+
+// Detail panel kapat
+function closeDetailPanel() {
+  const detailPanel = document.getElementById('aiPanelDetail');
+  detailPanel.classList.remove('active');
 }
 
 // Hızlı aksiyon butonu

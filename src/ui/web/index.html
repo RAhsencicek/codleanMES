@@ -128,23 +128,24 @@
     </div>
   </div>
 
-  <!-- ─── AI Asistan Modal (Blur Arka Plan) ────────────────────────── -->
-  <div class="ai-modal-backdrop" id="aiModalBackdrop" onclick="closeAIAssistant(event)">
-    <div class="ai-modal-box" onclick="event.stopPropagation()">
+  <!-- ─── AI Asistan Panel (Split Layout) ────────────────────────── -->
+  <div class="ai-panel-container" id="aiPanelContainer">
+    <!-- Sol Panel: Ana Sohbet -->
+    <div class="ai-panel-main" id="aiPanelMain">
       <!-- Header -->
-      <div class="ai-modal-header">
-        <div class="ai-modal-title">
-          <span class="ai-modal-icon">🤖</span>
+      <div class="ai-panel-header">
+        <div class="ai-panel-title">
+          <span class="ai-panel-icon">🤖</span>
           <div>
-            <div class="ai-modal-heading">Codlean AI Asistan</div>
-            <div class="ai-modal-subtitle">4 Uzman · 7/24 Yardıma Hazır</div>
+            <div class="ai-panel-heading">Codlean AI Asistan</div>
+            <div class="ai-panel-subtitle">4 Uzman · 7/24 Yardıma Hazır</div>
           </div>
         </div>
-        <button class="ai-modal-close" onclick="closeAIAssistant()">✕</button>
+        <button class="ai-panel-close" onclick="closeAIAssistant()">✕</button>
       </div>
       
       <!-- Messages -->
-      <div class="ai-modal-messages" id="assistantMessages">
+      <div class="ai-panel-messages" id="assistantMessages">
         <div class="message ai-message">
           <div class="message-content">
             Selam! 👋 Ben Codlean MES asistanıyım.
@@ -169,7 +170,7 @@
       </div>
       
       <!-- Input -->
-      <div class="ai-modal-input-area">
+      <div class="ai-panel-input-area">
         <input 
           type="text" 
           id="assistantInput" 
@@ -177,6 +178,17 @@
           onkeypress="if(event.key==='Enter') sendAssistantMessage()"
         >
         <button onclick="sendAssistantMessage()" class="send-btn">📤</button>
+      </div>
+    </div>
+    
+    <!-- Sağ Panel: Detay Panel (Başlangıçta gizli) -->
+    <div class="ai-panel-detail" id="aiPanelDetail">
+      <div class="ai-detail-header">
+        <h3 id="detailTitle">Detay</h3>
+        <button class="ai-detail-close" onclick="closeDetailPanel()">✕</button>
+      </div>
+      <div class="ai-detail-content" id="detailContent">
+        <!-- Dinamik içerik buraya gelecek -->
       </div>
     </div>
   </div>
