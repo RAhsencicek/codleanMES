@@ -105,6 +105,9 @@ body {
   padding: 6px 16px;
   min-width: 70px;
   transition: border-color 0.3s;
+  /* Responsive */
+  flex-shrink: 1;
+  max-width: 120px;
 }
 .stat-pill:hover { border-color: var(--border-glow); }
 .pill-val {
@@ -160,16 +163,40 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 20px 20px 0;
+  padding: 20px;
   gap: 16px;
 }
 
-/* ─── 2×3 GRID ─────────────────────────────────────────── */
+/* ─── 3×3 GRID ─────────────────────────────────────────── */
 .machines-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, minmax(280px, auto));
   gap: 14px;
   position: relative;
+}
+
+/* AI Karakter - En alt satır, ortada */
+.ai-character-cell {
+  grid-column: 2; /* Orta sütun */
+  grid-row: 3;    /* Alt satır */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.3s;
+  min-height: 280px;
+}
+
+.ai-character-cell:hover {
+  transform: scale(1.05);
+}
+
+.ai-character-cell dotlottie-wc {
+  max-width: 220px;
+  max-height: 220px;
+  width: 100%;
+  height: 100%;
 }
 
 .loading-overlay {
@@ -206,8 +233,12 @@ body {
   transition: border-color 0.3s, box-shadow 0.3s, transform 0.2s;
   position: relative;
   overflow: hidden;
-  min-height: 220px;
+  min-height: 280px;
+  max-height: 320px;
   backdrop-filter: blur(4px);
+  /* Responsive: Minimum genişlik koruması */
+  min-width: 0; /* Grid overflow prevention */
+  height: 100%; /* Eşit yükseklik */
 }
 
 .machine-card::before {
@@ -306,14 +337,29 @@ body {
 }
 
 /* Sensörler */
-.sensors-list { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.sensors-list { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 6px; 
+  flex: 1;
+  overflow: hidden;
+  max-height: 180px;
+}
 .sensor-row {
   display: grid;
   grid-template-columns: 1fr auto auto;
   align-items: center;
   gap: 8px;
+  min-width: 0; /* Overflow prevention */
 }
-.sensor-name { font-size: 11px; color: var(--text-2); }
+.sensor-name { 
+  font-size: 11px; 
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
 .sensor-value {
   font-size: 12px;
   font-weight: 600;
@@ -434,12 +480,45 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
 /* ─── Responsive ─────────────────────────────────────────── */
-@media (max-width: 1024px) {
-  .machines-grid { grid-template-columns: repeat(2, 1fr); }
+/* Sabit 3 sütun layout - tüm ekranlarda 2x3 grid */
+.machines-grid {
+  grid-template-columns: repeat(3, 1fr);
 }
-@media (max-width: 640px) {
-  .machines-grid { grid-template-columns: 1fr; }
+
+@media (max-width: 1200px) {
+  .machines-grid { grid-template-columns: repeat(2, 1fr); }
+  .main { padding: 16px; }
+}
+
+@media (max-width: 1024px) {
+  .machines-grid { grid-template-columns: repeat(2, 1fr); grid-template-rows: auto; }
+  .header { padding: 10px 16px; }
+  .main { padding: 14px; }
+  .machine-card { padding: 14px; }
+  /* AI karakter - 2. satır ortada */
+  .ai-character-cell { grid-column: 1 / -1; grid-row: 3; }
+}
+
+@media (max-width: 768px) {
+  .machines-grid { grid-template-columns: 1fr; grid-template-rows: auto; }
   .header-center { display: none; }
+  .header { padding: 8px 12px; }
+  .main { padding: 12px; }
+  .stat-pill { padding: 6px 10px; }
+  .stat-value { font-size: 16px; }
+  /* AI karakter - en alta */
+  .ai-character-cell { grid-column: 1; grid-row: 7; min-height: 200px; }
+  .ai-character-cell dotlottie-wc { max-width: 180px; max-height: 180px; }
+}
+
+@media (max-width: 480px) {
+  .logo-title { font-size: 14px; }
+  .logo-icon { font-size: 22px; }
+  .machine-card { padding: 12px; }
+  .machine-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .sensor-row { gap: 6px; }
+  .sensor-name { font-size: 10px; }
+  .sensor-value { font-size: 11px; }
 }
 
 /* ─── Kart İçi Usta Başı Butonu ────────────────────────── */
@@ -817,16 +896,27 @@ body {
 /* Karakter Trigger (Sayfa Altında) */
 .ai-character-trigger {
   position: fixed;
-  bottom: 30px;
+  bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 999;
   cursor: pointer;
   transition: transform 0.3s;
+  /* Sabit boyut */
+  width: 200px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .ai-character-trigger:hover {
-  transform: translateX(-50%) scale(1.1);
+  transform: translateX(-50%) scale(1.08);
+}
+
+.ai-character-trigger dotlottie-wc {
+  width: 200px !important;
+  height: 200px !important;
 }
 
 /* Modal Backdrop (BLUR) */
