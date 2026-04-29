@@ -272,8 +272,15 @@ class UstaBasi:
         def _run() -> None:
             try:
                 from google import genai
+                from src.core.api_key_manager import get_api_key, record_api_usage
+                
+                # Her çağrıda yeni API key al
+                current_key = get_api_key()
+                
+                # Yeni client oluştur
+                client = genai.Client(api_key=current_key)
 
-                response = self._client.models.generate_content(
+                response = client.models.generate_content(
                     model=self._model_name,
                     contents=prompt,
                     config=genai.types.GenerateContentConfig(
@@ -283,8 +290,13 @@ class UstaBasi:
                     ),
                 )
                 result_container[0] = response.text.strip()
+                
+                # Başarılı request'i kaydet
+                record_api_usage(success=True)
             except Exception as e:
                 error_container[0] = e
+                # Hata durumunda da kaydet
+                record_api_usage(success=False)
 
         worker = threading.Thread(target=_run, daemon=True)
         worker.start()
