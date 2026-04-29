@@ -61,19 +61,6 @@
         <p>HPR verisi yükleniyor...</p>
       </div>
     </section>
-
-    <!-- Alt panel: Log -->
-    <section class="bottom-bar">
-      <div class="log-panel">
-        <div class="panel-header">
-          <span>📋 Olay Akışı</span>
-          <span class="updated-at" id="updated-at">—</span>
-        </div>
-        <div class="log-list" id="log-list">
-          <div class="log-item log-info">Dashboard başlatılıyor...</div>
-        </div>
-      </div>
-    </section>
   </main>
 
   <!-- ─── USTA BAŞI MODAL ────────────────────────────────────────────── -->
@@ -132,6 +119,69 @@
     </div>
   </div>
 
+  <!-- ─── AI ASİSTAN (SAYFA ALTINDA, TAM ORTADA) ────────────────────────── -->
+  <div class="ai-character-trigger" id="aiTrigger" onclick="openAIAssistant()">
+    <dotlottie-wc 
+      src="https://lottie.host/d0e7c9d3-3f9f-4d3c-9ffc-7a2af87efad7/2Qnwb5yjtZ.lottie" 
+      stateMachineId="StateMachine1" 
+      style="width: 200px; height: 200px; cursor: pointer;">
+    </dotlottie-wc>
+  </div>
+  
+  <!-- AI Asistan Modal (Blur Arka Plan) -->
+  <div class="ai-modal-backdrop" id="aiModalBackdrop" onclick="closeAIAssistant(event)">
+    <div class="ai-modal-box" onclick="event.stopPropagation()">
+      <!-- Header -->
+      <div class="ai-modal-header">
+        <div class="ai-modal-title">
+          <span class="ai-modal-icon">🤖</span>
+          <div>
+            <div class="ai-modal-heading">Codlean AI Asistan</div>
+            <div class="ai-modal-subtitle">4 Uzman · 7/24 Yardıma Hazır</div>
+          </div>
+        </div>
+        <button class="ai-modal-close" onclick="closeAIAssistant()">✕</button>
+      </div>
+      
+      <!-- Messages -->
+      <div class="ai-modal-messages" id="assistantMessages">
+        <div class="message ai-message">
+          <div class="message-content">
+            Selam! 👋 Ben Codlean asistanıyım.
+            <br><br>
+            4 uzmanım var, hangisi lazım?
+          </div>
+        </div>
+        
+        <!-- Hızlı Aksiyon Butonları -->
+        <div class="quick-actions">
+          <button class="action-btn" onclick="quickAction('diagnosis')">🔍 Teşhis</button>
+          <button class="action-btn" onclick="quickAction('action')">🛠️ Aksiyon</button>
+          <button class="action-btn" onclick="quickAction('prediction')">📈 Tahmin</button>
+          <button class="action-btn" onclick="quickAction('root_cause')">🎯 Kök Neden</button>
+        </div>
+        
+        <div class="message ai-message">
+          <div class="message-content">
+            Ya da aklına geleni sor! 😊
+          </div>
+        </div>
+      </div>
+      
+      <!-- Input -->
+      <div class="ai-modal-input-area">
+        <input 
+          type="text" 
+          id="assistantInput" 
+          placeholder="Mesajınızı yazın..."
+          onkeypress="if(event.key==='Enter') sendAssistantMessage()"
+        >
+        <button onclick="sendAssistantMessage()" class="send-btn">📤</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/@lottiefiles/dotlottie-wc@0.9.10/dist/dotlottie-wc.js" type="module"></script>
   <script src="app.js"></script>
 </body>
 </html>

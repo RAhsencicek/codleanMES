@@ -199,7 +199,8 @@ const logLines = [];
 function addLog(msg, cls = 'log-info') {
   logLines.unshift({t: now(), msg, cls});
   if (logLines.length > 30) logLines.pop();
-  renderLog();
+  const el = document.getElementById('log-list');
+  if (el) renderLog();
 }
 function renderLog() {
   const el = document.getElementById('log-list');
@@ -391,9 +392,192 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     document.getElementById('usta-modal').classList.remove('open');
     document.getElementById('fleet-modal').classList.remove('open');
+    document.getElementById('aiModalBackdrop').classList.remove('open');
   }
 });
 
 // ─── Başlat ─────────────────────────────────────────────────────────────────
 addLog('Dashboard başlatılıyor...', 'log-info');
 connect();
+
+// ═══════════════════════════════════════════════════════
+// AI ASİSTAN FONKSİYONLARI
+// ═══════════════════════════════════════════════════════
+
+// AI Asistan'ı aç
+function openAIAssistant() {
+  const backdrop = document.getElementById('aiModalBackdrop');
+  backdrop.classList.add('open');
+  addLog('AI Asistan açıldı', 'log-info');
+  
+  // Input'a focus
+  setTimeout(() => {
+    document.getElementById('assistantInput').focus();
+  }, 300);
+}
+
+// AI Asistan'ı kapat
+function closeAIAssistant(event) {
+  // Eğer box içinde tıklandıysa kapatma
+  if (event && event.target.id !== 'aiModalBackdrop') {
+    return;
+  }
+  
+  const backdrop = document.getElementById('aiModalBackdrop');
+  backdrop.classList.remove('open');
+}
+
+// Hızlı aksiyon butonu
+async function quickAction(agentType) {
+  // Hangi makine?
+  const machineChoice = prompt(
+    'Hangi makine için?\n\n' +
+    '• HPR001, HPR002, HPR003, HPR004, HPR005, HPR006\n' +
+    '• Veya "hepsi" yazın\n\n' +
+    '(Örnek: HPR001)'
+  );
+  
+  if (!machineChoice) return;
+  
+  let machineId = machineChoice.toUpperCase();
+  
+  // Kullanıcı mesajı ekle
+  addAssistantMessage('user', `${agentType} için analiz istiyorum`);
+  
+  // Loading göster
+  addAssistantMessage('ai', '⏳ Analiz yapılıyor... (15-20 saniye sürebilir)');
+  
+  try {
+    if (machineId === 'HEPSI' || machineId === 'TÜMÜ' || machineId === 'TUMU') {
+      // Filo analizi
+      const response = await fetch('/api/fleet');
+      const data = await response.json();
+      
+      removeLastAssistantMessage();
+      addAssistantMessage('ai', data.analysis || 'Filo analizi tamamlandı.');
+      
+    } else {
+      // Tek makine analizi
+      const response = await fetch(`/api/multi-agent/analyze/${machineId}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({})
+      });
+      
+      const data = await response.json();
+      removeLastAssistantMessage();
+      
+      if (data.success) {
+        // Ajana özel sonuç göster
+        displayAgentResult(agentType, data, machineId);
+      } else {
+        addAssistantMessage('ai', `❌ Analiz yapılamadı: ${data.error || 'Bilinmeyen hata'}`);
+      }
+    }
+  } catch (error) {
+    removeLastAssistantMessage();
+    addAssistantMessage('ai', '❌ Bağlantı hatası. Lütfen tekrar deneyin.');
+  }
+}
+
+// Ajan sonucunu göster
+function displayAgentResult(agentType, data, machineId) {
+  let message = '';
+  
+  switch(agentType) {
+    case 'diagnosis':
+      const diagnosis = data.diagnosis?.primary_diagnosis?.description_tr || 'Teşhis bilgisi yok';
+      message = `🔍 TEŞHİS - ${machineId}\n\n${diagnosis}`;
+      break;
+      
+    case 'action':
+      const actions = data.action?.immediate_actions || [];
+      if (actions.length === 0) {
+        message = `🛠️ AKSİYON - ${machineId}\n\nÖnerilen aksiyon yok.`;
+      } else {
+        message = `🛠️ AKSİYON - ${machineId}\\n\n` + 
+                  actions.map(a => `• ${a.description_tr} (${a.priority})`).join('\n');
+      }
+      break;
+      
+    case 'prediction':
+      const prediction = data.prediction?.short_term_forecast || 'Tahmin bilgisi yok';
+      message = `📈 TAHMİN - ${machineId}\n\n${prediction}`;
+      break;
+      
+    case 'root_cause':
+      const causes = data.root_cause?.likely_causes || [];
+      if (causes.length === 0) {
+        message = `🎯 KÖK NEDEN - ${machineId}\n\nKök neden analizi yok.`;
+      } else {
+        message = `🎯 KÖK NEDEN - ${machineId}\n\n` + 
+                  causes.map(c => `• ${c.description_tr}`).join('\n');
+      }
+      break;
+  }
+  
+  addAssistantMessage('ai', message);
+}
+
+// Serbest mesaj gönder
+async function sendAssistantMessage() {
+  const input = document.getElementById('assistantInput');
+  const message = input.value.trim();
+  
+  if (!message) return;
+  
+  // Kullanıcı mesajı ekle
+  addAssistantMessage('user', message);
+  input.value = '';
+  
+  // Loading göster
+  addAssistantMessage('ai', '⏳ Düşünüyorum...');
+  
+  try {
+    const response = await fetch('/api/ask', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        message: message
+      })
+    });
+    
+    const data = await response.json();
+    removeLastAssistantMessage();
+    
+    addAssistantMessage('ai', data.answer || data.response || 'Üzgünüm, yanıt veremedim.');
+  } catch (error) {
+    removeLastAssistantMessage();
+    addAssistantMessage('ai', '❌ Bağlantı hatası. Lütfen tekrar deneyin.');
+  }
+}
+
+// Yardımcı: Mesaj ekle
+function addAssistantMessage(sender, text) {
+  const messagesDiv = document.getElementById('assistantMessages');
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `message ${sender}-message`;
+  
+  const contentDiv = document.createElement('div');
+  contentDiv.className = 'message-content';
+  contentDiv.textContent = text;
+  contentDiv.style.whiteSpace = 'pre-wrap'; // Yeni satırları koru
+  
+  messageDiv.appendChild(contentDiv);
+  messagesDiv.appendChild(messageDiv);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+// Yardımcı: Son mesajı kaldır
+function removeLastAssistantMessage() {
+  const messagesDiv = document.getElementById('assistantMessages');
+  if (messagesDiv.lastChild) {
+    messagesDiv.removeChild(messagesDiv.lastChild);
+  }
+}
+
+// ─── Sayfa Yüklendiğinde Başlat ─────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  connect();
+  addLog('Dashboard başlatıldı', 'log-normal');
+});
