@@ -186,6 +186,8 @@ body {
   cursor: pointer;
   transition: transform 0.3s;
   min-height: 280px;
+  position: relative;
+  z-index: 1001; /* Modal blur'ın üstünde kalsın */
 }
 
 .ai-character-cell:hover {
