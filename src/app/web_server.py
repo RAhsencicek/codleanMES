@@ -862,6 +862,63 @@ def api_get_report(report_id):
     })
 
 
+@app.route("/api/status/keys", methods=["GET"])
+def api_key_status():
+    """API key kullanım durumunu döndürür (Gemini + Groq)."""
+    try:
+        from src.core.api_key_manager import get_rotation_manager, get_groq_rotation_manager
+        
+        gemini_mgr = get_rotation_manager()
+        groq_mgr = get_groq_rotation_manager()
+        
+        # Gemini durumu
+        gemini_total = len(gemini_mgr.api_keys) * gemini_mgr.max_requests_per_day
+        gemini_used = sum(
+            usage['count'] 
+            for usage in gemini_mgr.usage_data.values()
+        )
+        gemini_remaining = gemini_total - gemini_used
+        
+        # Groq durumu
+        groq_total = len(groq_mgr.api_keys) * groq_mgr.max_requests_per_day
+        groq_used = sum(
+            usage['count'] 
+            for usage in groq_mgr.usage_data.values()
+        )
+        groq_remaining = groq_total - groq_used
+        
+        return jsonify({
+            "success": True,
+            "gemini": {
+                "total": gemini_total,
+                "used": gemini_used,
+                "remaining": gemini_remaining,
+                "keys_count": len(gemini_mgr.api_keys),
+                "max_per_key": gemini_mgr.max_requests_per_day,
+                "usage_pct": round((gemini_used / gemini_total * 100) if gemini_total > 0 else 0, 1)
+            },
+            "groq": {
+                "total": groq_total,
+                "used": groq_used,
+                "remaining": groq_remaining,
+                "keys_count": len(groq_mgr.api_keys),
+                "max_per_key": groq_mgr.max_requests_per_day,
+                "usage_pct": round((groq_used / groq_total * 100) if groq_total > 0 else 0, 1)
+            },
+            "combined": {
+                "total": gemini_total + groq_total,
+                "used": gemini_used + groq_used,
+                "remaining": gemini_remaining + groq_remaining,
+                "usage_pct": round(((gemini_used + groq_used) / (gemini_total + groq_total) * 100) if (gemini_total + groq_total) > 0 else 0, 1)
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     print("🏭 Codlean MES Web Dashboard başlatılıyor...")

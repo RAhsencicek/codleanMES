@@ -37,6 +37,11 @@
         <span class="pill-val" id="uptime">00:00</span>
         <span class="pill-label">Çalışma Süresi</span>
       </div>
+      <!-- API Key Durumu -->
+      <div class="stat-pill pill-api" id="pill-api-keys" title="API Key Kullanım Durumu" onclick="openApiStatus()">
+        <span class="pill-val" id="api-usage">--/--</span>
+        <span class="pill-label">🔑 API Kotası</span>
+      </div>
     </div>
     <div class="header-right">
       <!-- Filo Analizi Butonu -->
@@ -190,6 +195,59 @@
         </div>
         <div class="ai-detail-content" id="detailContent">
           <!-- Dinamik içerik buraya gelecek -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── API KEY STATUS MODAL ──────────────────────────────────────── -->
+  <div class="modal-backdrop" id="api-modal" onclick="closeApiModal(event)" style="display:none;">
+    <div class="modal-box" style="max-width: 600px;">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span class="modal-icon">🔑</span>
+          <h3>API Key Kullanım Durumu</h3>
+        </div>
+        <button class="modal-close" onclick="closeApiModal()">✕</button>
+      </div>
+      <div class="modal-body" id="api-status-body">
+        <div class="api-status-card">
+          <h4>💎 Gemini API</h4>
+          <div class="api-bar-container">
+            <div class="api-bar" id="gemini-bar" style="width: 0%; background: linear-gradient(90deg, #4285f4, #34a853);"></div>
+          </div>
+          <div class="api-stats">
+            <div class="api-stat"><span class="api-stat-label">Kullanılan:</span><span class="api-stat-value" id="gemini-used">0</span></div>
+            <div class="api-stat"><span class="api-stat-label">Kalan:</span><span class="api-stat-value" id="gemini-remaining">0</span></div>
+            <div class="api-stat"><span class="api-stat-label">Toplam:</span><span class="api-stat-value" id="gemini-total">0</span></div>
+            <div class="api-stat"><span class="api-stat-label">Key Sayısı:</span><span class="api-stat-value" id="gemini-keys">0</span></div>
+          </div>
+        </div>
+
+        <div class="api-status-card">
+          <h4>🚀 Groq API</h4>
+          <div class="api-bar-container">
+            <div class="api-bar" id="groq-bar" style="width: 0%; background: linear-gradient(90deg, #f59e0b, #ef4444);"></div>
+          </div>
+          <div class="api-stats">
+            <div class="api-stat"><span class="api-stat-label">Kullanılan:</span><span class="api-stat-value" id="groq-used">0</span></div>
+            <div class="api-stat"><span class="api-stat-label">Kalan:</span><span class="api-stat-value" id="groq-remaining">0</span></div>
+            <div class="api-stat"><span class="api-stat-label">Toplam:</span><span class="api-stat-value" id="groq-total">0</span></div>
+            <div class="api-stat"><span class="api-stat-label">Key Sayısı:</span><span class="api-stat-value" id="groq-keys">0</span></div>
+          </div>
+        </div>
+
+        <div class="api-status-card api-combined">
+          <h4>📊 Toplam Kullanım</h4>
+          <div class="api-bar-container">
+            <div class="api-bar" id="combined-bar" style="width: 0%; background: linear-gradient(90deg, #8b5cf6, #ec4899);"></div>
+          </div>
+          <div class="api-stats">
+            <div class="api-stat"><span class="api-stat-label">Toplam Kullanılan:</span><span class="api-stat-value" id="combined-used">0</span></div>
+            <div class="api-stat"><span class="api-stat-label">Toplam Kalan:</span><span class="api-stat-value" id="combined-remaining">0</span></div>
+            <div class="api-stat"><span class="api-stat-label">Kapasite:</span><span class="api-stat-value" id="combined-total">0</span></div>
+            <div class="api-stat"><span class="api-stat-label">Kullanım Oranı:</span><span class="api-stat-value" id="combined-pct">0%</span></div>
+          </div>
         </div>
       </div>
     </div>

@@ -1220,3 +1220,76 @@ body {
     flex-direction: column;
   }
 }
+
+/* ─── API Key Status ───────────────────────────────── */
+.pill-api {
+  cursor: pointer;
+  transition: all 0.2s;
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.pill-api:hover {
+  background: rgba(139, 92, 246, 0.2);
+  border-color: rgba(139, 92, 246, 0.5);
+  transform: translateY(-2px);
+}
+
+.api-status-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r2);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.api-status-card h4 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: var(--text-1);
+}
+
+.api-bar-container {
+  width: 100%;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.api-bar {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}
+
+.api-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.api-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.api-stat-label {
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.api-stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-1);
+  font-family: var(--mono);
+}
+
+.api-combined {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(236, 72, 153, 0.1));
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}

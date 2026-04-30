@@ -372,7 +372,7 @@ async function openFleet() {
   document.getElementById('fleet-modal').classList.add('open');
   const chat = document.getElementById('fleet-chat');
   chat.innerHTML = '<div class="chat-bubble chat-system">⏳ Tüm HPR makineleri analiz ediliyor...</div>';
-
+  
   try {
     const res  = await fetch('/api/fleet');
     const data = await res.json();
@@ -382,9 +382,72 @@ async function openFleet() {
     chat.innerHTML = `<div class="chat-bubble chat-usta">Bağlantı hatası: ${e.message}</div>`;
   }
 }
+
 function closeFleetModal(event) {
   if (event && event.target !== document.getElementById('fleet-modal')) return;
   document.getElementById('fleet-modal').classList.remove('open');
+}
+
+// ─── API Key Status ─────────────────────────────────────────────────────
+async function openApiStatus() {
+  document.getElementById('api-modal').style.display = 'flex';
+  await fetchApiStatus();
+}
+
+function closeApiModal(event) {
+  if (event && event.target !== event.currentTarget) return;
+  document.getElementById('api-modal').style.display = 'none';
+}
+
+async function fetchApiStatus() {
+  try {
+    const response = await fetch('/api/status/keys');
+    const data = await response.json();
+    
+    if (!data.success) return;
+    
+    // Gemini
+    const gemini = data.gemini;
+    document.getElementById('gemini-used').textContent = gemini.used;
+    document.getElementById('gemini-remaining').textContent = gemini.remaining;
+    document.getElementById('gemini-total').textContent = gemini.total;
+    document.getElementById('gemini-keys').textContent = gemini.keys_count;
+    document.getElementById('gemini-bar').style.width = `${gemini.usage_pct}%`;
+    
+    // Groq
+    const groq = data.groq;
+    document.getElementById('groq-used').textContent = groq.used;
+    document.getElementById('groq-remaining').textContent = groq.remaining;
+    document.getElementById('groq-total').textContent = groq.total;
+    document.getElementById('groq-keys').textContent = groq.keys_count;
+    document.getElementById('groq-bar').style.width = `${groq.usage_pct}%`;
+    
+    // Combined
+    const combined = data.combined;
+    document.getElementById('combined-used').textContent = combined.used;
+    document.getElementById('combined-remaining').textContent = combined.remaining;
+    document.getElementById('combined-total').textContent = combined.total;
+    document.getElementById('combined-pct').textContent = `${combined.usage_pct}%`;
+    document.getElementById('combined-bar').style.width = `${combined.usage_pct}%`;
+    
+    // Header pill
+    document.getElementById('api-usage').textContent = `${combined.used}/${combined.total}`;
+    
+  } catch (error) {
+    console.error('[API Status] Hata:', error);
+  }
+}
+
+// API status'ü her 30 saniyede bir güncelle
+setInterval(fetchApiStatus, 30000);
+
+// Sayfa yüklenince API status'ü çek
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    fetchApiStatus();
+  });
+} else {
+  fetchApiStatus();
 }
 
 // ─── Klavye kısayolları ───────────────────────────────────────────────────────
