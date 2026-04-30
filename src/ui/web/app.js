@@ -696,21 +696,27 @@ async function sendAssistantMessage() {
   addAssistantMessage('ai', '⏳ Düşünüyorum...');
   
   try {
-    const response = await fetch('/api/ask', {
+    const response = await fetch('/api/ask-general', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        message: message
-      })
+      body: JSON.stringify({ message: message })
     });
     
     const data = await response.json();
     removeLastAssistantMessage();
     
-    addAssistantMessage('ai', data.answer || data.response || 'Üzgünüm, yanıt veremedim.');
+    if (!response.ok) {
+      // HTTP hatası — sunucudan gelen hata mesajını göster
+      const errorMsg = data.error || `Sunucu hatası (${response.status})`;
+      addAssistantMessage('ai', `❌ ${errorMsg}`);
+      return;
+    }
+    
+    // Başarılı yanıt
+    addAssistantMessage('ai', data.answer || 'Yanıt alınamadı. Lütfen tekrar deneyin.');
   } catch (error) {
     removeLastAssistantMessage();
-    addAssistantMessage('ai', '❌ Bağlantı hatası. Lütfen tekrar deneyin.');
+    addAssistantMessage('ai', '❌ Bağlantı hatası. Sunucunun çalıştığından emin olun.');
   }
 }
 

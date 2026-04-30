@@ -317,6 +317,58 @@ def build(
     # ── 6. Son uyarı özeti ───────────────────────────────────────────────────
     last_alerts = md.get("last_alerts", [])
 
+    # ── 7. ML Model Tahmini (XGBoost + SHAP) ────────────────────────────────
+    ml_prediction = None
+    shap_explanation = None
+    dlime_explanation = None
+    
+    try:
+        from pipeline.ml_predictor import MLPredictor
+        
+        # Singleton: İlk çağrıda model yüklenir, sonra cache'den döner
+        ml_predictor = MLPredictor()
+        
+        # machine_data → state formatına çevir (ML predictor beklediği format)
+        ml_state = {
+            "buffers": {},
+            "ewma_mean": {},
+            "ewma_var": {},
+            "sample_count": {},
+        }
+        
+        # Sensör verilerini buffer formatına koy
+        for sensor_key, sensor_state in sensor_states.items():
+            val = sensor_state.get("value")
+            if val is not None:
+                # Son değer buffer'ı (liste olarak)
+                ml_state["buffers"][sensor_key] = [val]
+                # EWMA mean (şu anki değer)
+                ml_state["ewma_mean"][sensor_key] = val
+                # Varyans (şimdilik 0, tek değer var)
+                ml_state["ewma_var"][sensor_key] = 0.0
+                # Sample count
+                ml_state["sample_count"][sensor_key] = 1
+        
+        # ML risk tahmini yap
+        ml_result = ml_predictor.predict_risk(machine_id, ml_state)
+        
+        if ml_result and ml_result.active:
+            ml_prediction = {
+                "anomaly_score": round(ml_result.confidence, 3),
+                "risk_score_ml": round(ml_result.score, 1),
+                "active": True,
+                "top_features": ml_result.top_features[:3] if ml_result.top_features else [],
+            }
+            shap_explanation = ml_result.explanation
+            # dlime_explanation opsiyonel
+            dlime_explanation = getattr(ml_result, 'dlime_explanation', None)
+            
+    except Exception as ml_err:
+        import logging as _log_ml
+        _log_ml.getLogger("context_builder").debug(
+            "ML predictor kullanılamadı (normal - model yüklenmemiş olabilir): %s", ml_err
+        )
+
     return {
         "machine_id": machine_id,
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -334,6 +386,10 @@ def build(
         "active_physics_rules": active_rules,
         "last_alerts": last_alerts[-3:] if last_alerts else [],
         "similar_past_events": similar_past_events,
+        # ML Model çıktıları (yenı)
+        "ml_prediction": ml_prediction,
+        "shap_explanation": shap_explanation,
+        "dlime_explanation": dlime_explanation,
     }
 
 

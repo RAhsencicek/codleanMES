@@ -901,6 +901,22 @@ class RootCauseAgent:
             for v in violations:
                 lines.append(f"  - {v}")
 
+        # ── ML MODEL TAHMİNİ (YENİ) ─────────────────────────────────────────
+        ml_pred = context.get("ml_prediction")
+        if ml_pred and ml_pred.get("active"):
+            lines.append("")
+            lines.append("ML MODEL TAHMİNİ:")
+            lines.append(f"  - Anomali Skoru: {ml_pred.get('anomaly_score', 0):.3f}")
+            lines.append(f"  - ML Risk Skoru: {ml_pred.get('risk_score_ml', 0):.1f}/100")
+            top_features = ml_pred.get("top_features", [])
+            if top_features:
+                lines.append(f"  - En Önemli Faktörler: {', '.join(top_features)}")
+
+        shap_exp = context.get("shap_explanation")
+        if shap_exp:
+            lines.append("")
+            lines.append(f"SHAP AÇIKLAMASI: {shap_exp}")
+
         return "\n".join(lines)
 
     def _build_physics_explanation(self, physics_matches: list[dict]) -> str:
@@ -956,7 +972,9 @@ class RootCauseAgent:
                     log.warning("[ROOT_CAUSE] Gemini kotası doldu - Groq fallback deneniyor...")
                     try:
                         groq_key = get_groq_api_key()
-                        if groq_key:
+                        if not groq_key:
+                            log.warning("[ROOT_CAUSE] Groq API key yok — fallback atlanıyor")
+                        else:
                             groq_client = Groq(api_key=groq_key)
                             groq_response = groq_client.chat.completions.create(
                                 model="llama-3.3-70b-versatile",

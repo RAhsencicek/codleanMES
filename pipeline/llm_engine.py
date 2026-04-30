@@ -18,6 +18,12 @@ import os
 import threading
 import time
 import traceback
+
+try:
+    import groq
+    GROQ_AVAILABLE = True
+except ImportError:
+    GROQ_AVAILABLE = False
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable
 
@@ -209,7 +215,7 @@ class UstaBasi:
     AUTO_INTERVAL_SEC = 300  # Otomatik analizde 5 dakika
     ALERT_INTERVAL_SEC = 60  # Alert sonrası 1 dakika
     # FIX P1-2: Gemini API için maksimum bekleme süresi
-    CALL_TIMEOUT_SEC = 30  # 30 saniyede yanıt gelmezse hata dön
+    CALL_TIMEOUT_SEC = 45  # 45 saniye: Gemini (15s) + Groq fallback (30s) için yeterli
 
     def __init__(self, api_key: str = None, model_name: str = "gemini-2.5-flash"):
         self._ready = False
@@ -218,6 +224,15 @@ class UstaBasi:
         self._init_error = None
 
         key = api_key or os.environ.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
+
+        # GEMINI_API_KEY boşsa, rotation manager'dan almayı dene
+        if not key:
+            try:
+                from src.core.api_key_manager import get_api_key
+                key = get_api_key()
+                log.info("[LLM_INIT] GEMINI_API_KEY boş — rotation manager'dan key alındı")
+            except Exception as e:
+                log.debug("[LLM_INIT] Rotation manager'dan key alınamadı: %s", e)
 
         log.info(f"[LLM_INIT] dotenv yüklendi: {_dotenv_loaded}")
         log.info(f"[LLM_INIT] API Key mevcut: {bool(key)}")
@@ -252,9 +267,17 @@ class UstaBasi:
     def _call(self, prompt: str, cache_key: str = None) -> str:
         """
         Gemini API'ye senkron çağrı yapar.
-        Hata durumunda kullanıcıya anlamlı mesaj döner.
+        Hata durumunda Groq fallback dener.
+        Her iki API de başarısız olursa kullanıcıya anlamlı mesaj döner.
         """
         if not self._ready:
+            # Gemini hazır değilse doğrudan Groq'u dene
+            log.info("[LLM_ENGINE] Gemini hazır değil, doğrudan Groq deneniyor...")
+            groq_result = self._call_groq_fallback(prompt)
+            if groq_result:
+                if cache_key:
+                    self._cache[cache_key] = (time.time(), groq_result)
+                return groq_result
             return self._init_error or "AI Usta Başı hazır değil."
 
         # Cache Kontrolü
@@ -272,8 +295,7 @@ class UstaBasi:
         def _run() -> None:
             try:
                 from google import genai
-                from src.core.api_key_manager import get_api_key, record_api_usage, get_groq_api_key, record_groq_usage
-                import groq
+                from src.core.api_key_manager import get_api_key, record_api_usage
                 
                 # Her çağrıda yeni API key al
                 current_key = get_api_key()
@@ -295,39 +317,20 @@ class UstaBasi:
                 # Başarılı request'i kaydet
                 record_api_usage(success=True)
             except Exception as e:
-                error_container[0] = e
+                from src.core.api_key_manager import record_api_usage
                 err_str = str(e)
-                
-                # Gemini hatası - Groq fallback dene
-                if "429" in err_str or "quota" in err_str.lower():
-                    log.warning("[LLM_ENGINE] Gemini 429 hatası - Groq fallback deneniyor...")
-                    try:
-                        # Groq client
-                        groq_key = get_groq_api_key()
-                        groq_client = groq.Groq(api_key=groq_key)
-                        
-                        groq_response = groq_client.chat.completions.create(
-                            model='llama-3.3-70b-versatile',
-                            messages=[
-                                {"role": "system", "content": _SYSTEM_PROMPT},
-                                {"role": "user", "content": prompt}
-                            ],
-                            temperature=0.4,
-                            max_tokens=2048,
-                        )
-                        
-                        result_container[0] = groq_response.choices[0].message.content.strip()
-                        record_groq_usage(success=True)
-                        log.info("[LLM_ENGINE] Groq fallback başarılı!")
-                        return  # Groq başarılı, çık
-                        
-                    except Exception as groq_err:
-                        log.exception("[LLM_ENGINE] Groq fallback da başarısız: %s", groq_err)
-                        record_groq_usage(success=False)
-                        # Groq da başarısız, orijinal hatayı döndür
-                
-                # Hata durumunda da kaydet
+                log.warning("[LLM_ENGINE] Gemini hata (%s) — Groq fallback deneniyor...", err_str[:150])
                 record_api_usage(success=False)
+                
+                # ── TÜM Gemini hataları için Groq fallback dene ──
+                groq_result = self._call_groq_fallback(prompt)
+                if groq_result:
+                    result_container[0] = groq_result
+                    error_container[0] = None  # ✅ Groq başarılı — hatayı temizle
+                    log.info("[LLM_ENGINE] ✅ Groq fallback başarılı!")
+                else:
+                    error_container[0] = e  # Groq da başarısız — orijinal hatayı sakla
+                    log.error("[LLM_ENGINE] ❌ Groq fallback da başarısız oldu")
 
         worker = threading.Thread(target=_run, daemon=True)
         worker.start()
@@ -335,7 +338,7 @@ class UstaBasi:
 
         if worker.is_alive():
             log.warning(
-                "Gemini API timeout (%ds) — yanıt gelmedi.",
+                "API timeout (%ds) — yanıt gelmedi.",
                 self.CALL_TIMEOUT_SEC,
             )
             return f"⏰ API zaman aşımı ({self.CALL_TIMEOUT_SEC}s). Lütfen tekrar deneyin."
@@ -343,12 +346,12 @@ class UstaBasi:
         if error_container[0] is not None:
             err = error_container[0]
             err_str = str(err)
-            log.exception("Gemini API hatası: %s", err_str)
+            log.error("Gemini + Groq başarısız: %s", err_str[:200])
 
-            if "quota" in err_str.lower() or "429" in err_str:
-                return "🚫 API kotası doldu. Groq fallback denendi ama başarısız oldu."
+            if "quota" in err_str.lower() or "429" in err_str or "503" in err_str or "UNAVAILABLE" in err_str:
+                return "🚫 Gemini kota/servis hatası. Groq fallback da başarısız oldu. Biraz bekleyip tekrar deneyin."
             elif "403" in err_str or "permission" in err_str.lower():
-                return "🔑 API anahtarı geçersiz veya yetkisiz. Lütfen GEMINI_API_KEY'i kontrol edin."
+                return "🔑 API anahtarı geçersiz veya yetkisiz. API key'leri kontrol edin."
             elif "network" in err_str.lower() or "connection" in err_str.lower():
                 return "🌐 API bağlantı hatası. İnternet bağlantısını kontrol edin."
             else:
@@ -358,6 +361,51 @@ class UstaBasi:
             self._cache[cache_key] = (time.time(), result_container[0])
 
         return result_container[0]
+
+    # ── Groq Fallback — ayrı metod ────────────────────────────────────────────
+    def _call_groq_fallback(self, prompt: str) -> str | None:
+        """
+        Groq API ile fallback çağrı yapar.
+        Başarılıysa yanıt döner, başarısızsa None döner.
+        """
+        if not GROQ_AVAILABLE:
+            log.error("[GROQ_FALLBACK] groq modülü import edilemedi! 'pip install groq' çalıştırın.")
+            return None
+
+        try:
+            from src.core.api_key_manager import get_groq_api_key, record_groq_usage
+            
+            groq_key = get_groq_api_key()
+            if not groq_key:
+                log.warning("[GROQ_FALLBACK] Groq API key yok — GROQ_API_KEYS tanımlı mı?")
+                return None
+
+            log.info("[GROQ_FALLBACK] Groq key alındı: %s...", groq_key[:8])
+            groq_client = groq.Groq(api_key=groq_key)
+
+            groq_response = groq_client.chat.completions.create(
+                model=os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
+                messages=[
+                    {"role": "system", "content": _SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.4,
+                max_tokens=int(os.getenv("GROQ_MAX_TOKENS", "2048")),
+            )
+
+            result = groq_response.choices[0].message.content.strip()
+            record_groq_usage(success=True)
+            return result
+
+        except Exception as groq_err:
+            log.error("[GROQ_FALLBACK] Groq çağrısı başarısız: %s", groq_err)
+            log.error("[GROQ_FALLBACK] Traceback: %s", traceback.format_exc())
+            try:
+                from src.core.api_key_manager import record_groq_usage
+                record_groq_usage(success=False)
+            except Exception:
+                pass
+            return None
 
     # ── Makine analizi (otomatik mod) ─────────────────────────────────────────
     def analyze(self, context: dict, force: bool = False) -> str:

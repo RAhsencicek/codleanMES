@@ -957,7 +957,9 @@ Teşhis güveni: %{int(diagnosis['confidence'] * 100)}."""
                     log.warning("[REPORT] Gemini kotası doldu - Groq fallback deneniyor...")
                     try:
                         groq_key = get_groq_api_key()
-                        if groq_key:
+                        if not groq_key:
+                            log.warning("[REPORT] Groq API key yok — fallback atlanıyor")
+                        else:
                             groq_client = Groq(api_key=groq_key)
                             groq_response = groq_client.chat.completions.create(
                                 model="llama-3.3-70b-versatile",

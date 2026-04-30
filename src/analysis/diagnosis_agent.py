@@ -357,29 +357,28 @@ class DiagnosisAgent:
                     try:
                         # Groq client
                         groq_key = get_groq_api_key()
-                        print(f"[GROQ DEBUG] Key alınıyor: {groq_key[:20]}...")
-                        groq_client = groq.Groq(api_key=groq_key)
-                        
-                        print(f"[GROQ DEBUG] Model: llama-3.3-70b-versatile")
-                        groq_response = groq_client.chat.completions.create(
-                            model='llama-3.3-70b-versatile',
-                            messages=[
-                                {"role": "system", "content": _DIAGNOSIS_SYSTEM_PROMPT},
-                                {"role": "user", "content": prompt}
-                            ],
-                            temperature=0.3,
-                            max_tokens=4096,
-                        )
-                        
-                        result_container[0] = groq_response.choices[0].message.content.strip()
-                        record_groq_usage(success=True)
-                        log.info("[DIAGNOSIS] Groq fallback başarılı!")
-                        print(f"[GROQ DEBUG] Başarılı! Yanıt uzunluğu: {len(result_container[0])}")
-                        return  # Groq başarılı, çık
-                        
+                        if not groq_key:
+                            log.warning("[DIAGNOSIS] Groq API key yok — fallback atlanıyor")
+                        else:
+                            groq_client = groq.Groq(api_key=groq_key)
+                            
+                            groq_response = groq_client.chat.completions.create(
+                                model='llama-3.3-70b-versatile',
+                                messages=[
+                                    {"role": "system", "content": _DIAGNOSIS_SYSTEM_PROMPT},
+                                    {"role": "user", "content": prompt}
+                                ],
+                                temperature=0.3,
+                                max_tokens=4096,
+                            )
+                            
+                            result_container[0] = groq_response.choices[0].message.content.strip()
+                            record_groq_usage(success=True)
+                            log.info("[DIAGNOSIS] Groq fallback başarılı!")
+                            return  # Groq başarılı, çık
+                            
                     except Exception as groq_err:
                         log.exception("[DIAGNOSIS] Groq fallback da başarısız: %s", groq_err)
-                        print(f"[GROQ DEBUG] HATA: {groq_err}")
                         record_groq_usage(success=False)
                         # Groq da başarısız, orijinal hatayı döndür
                 
@@ -651,6 +650,34 @@ KALİTE KRİTERLERİ (BUNLARA UYMAZSAN YANIT REDDEDİLİR)
             lines.append("BENZER GEÇMİŞ OLAYLAR:")
             for event in similar:
                 lines.append(f"  - {event}")
+
+        # ── ML MODEL TAHMİNİ (YENİ) ─────────────────────────────────────────
+        ml_pred = context.get("ml_prediction")
+        if ml_pred and ml_pred.get("active"):
+            lines.append("")
+            lines.append("ML MODEL TAHMİNİ:")
+            lines.append(f"  - Anomali Skoru: {ml_pred.get('anomaly_score', 0):.3f} (0-1 arası, yüksek=riskli)")
+            lines.append(f"  - ML Risk Skoru: {ml_pred.get('risk_score_ml', 0):.1f}/100")
+            
+            top_features = ml_pred.get("top_features", [])
+            if top_features:
+                lines.append(f"  - En Önemli Faktörler:")
+                for i, feat in enumerate(top_features, 1):
+                    lines.append(f"    {i}. {feat}")
+
+        # SHAP Açıklaması
+        shap_exp = context.get("shap_explanation")
+        if shap_exp:
+            lines.append("")
+            lines.append("SHAP AÇIKLAMASI (Model Karar Nedeni):")
+            lines.append(f"  {shap_exp}")
+
+        # DLIME Açıklaması (opsiyonel)
+        dlime_exp = context.get("dlime_explanation")
+        if dlime_exp:
+            lines.append("")
+            lines.append("DLIME AÇIKLAMASI (Detaylı Neden):")
+            lines.append(f"  {dlime_exp}")
 
         return "\n".join(lines)
 

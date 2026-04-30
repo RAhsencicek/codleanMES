@@ -600,11 +600,11 @@ def api_ask():
         return jsonify({"error": "machine_id ve question gerekli"}), 400
 
     usta = _get_usta()
-    if not usta or not usta.is_ready:
+    if not usta:
         return jsonify({
             "machine_id": machine_id,
             "question":   question,
-            "answer":     "AI Usta Başı şu an kullanılamıyor. GEMINI_API_KEY tanımlı mı?",
+            "answer":     "AI Usta Başı başlatılamadı. Sistem loglarını kontrol edin.",
             "timestamp":  datetime.now().strftime("%H:%M:%S"),
         })
 
@@ -633,12 +633,80 @@ def api_ask():
     return jsonify(response)
 
 
+@app.route("/api/ask-general", methods=["POST"])
+def api_ask_general():
+    """Genel AI asistan sohbeti — makine bağlamı gerektirmez."""
+    body = request.get_json(force=True) or {}
+    message = body.get("message", "").strip()
+
+    if not message:
+        return jsonify({"error": "message alanı gerekli"}), 400
+
+    try:
+        usta = _get_usta()
+        if not usta:
+            return jsonify({
+                "answer": "AI sistemi başlatılamadı. Sistem loglarını kontrol edin.",
+                "timestamp": datetime.now().strftime("%H:%M:%S"),
+            })
+
+        # state.json'dan tüm makinelerin özetini çıkar
+        state = read_state()
+        machines_summary = []
+        for mid, mdata in state.items():
+            if not mid.startswith("HPR"):
+                continue
+            risk = mdata.get("risk_score", 0) or 0
+            severity = mdata.get("severity", "NORMAL") or "NORMAL"
+            machines_summary.append(f"{mid}: Risk={risk:.0f}/100, Durum={severity}")
+
+        system_context = "GENEL SİSTEM DURUMU:\n" + "\n".join(machines_summary) if machines_summary else "Makine verisi henüz yok."
+
+        # Kullanıcı sorusu + sistem bağlamını birleştir
+        full_question = f"{system_context}\n\nKULLANICI SORUSU: {message}"
+
+        # UstaBasi için minimal bağlam paketi
+        context = {
+            "machine_id":          "SYSTEM",
+            "timestamp":           datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "risk_score":          0,
+            "severity":            "INFO",
+            "confidence":          0,
+            "operating_time":      "—",
+            "operating_minutes":   0,
+            "last_alert_source":   "",
+            "alert_count_session": 0,
+            "sensor_states":       {},
+            "limit_violations":    [],
+            "critical_sensors":    [],
+            "eta_predictions":     {},
+            "active_physics_rules": [],
+            "similar_past_events": [],
+            "last_alerts":         [],
+        }
+
+        answer = usta.ask(context, full_question)
+
+        return jsonify({
+            "message":   message,
+            "answer":    answer or "Yanıt üretilmedi. Lütfen tekrar deneyin.",
+            "timestamp": datetime.now().strftime("%H:%M:%S"),
+        })
+
+    except Exception as e:
+        logging.getLogger(__name__).error(f"[ASK_GENERAL] Hata: {e}")
+        return jsonify({
+            "answer":    f"Bir hata oluştu: {str(e)}",
+            "timestamp": datetime.now().strftime("%H:%M:%S"),
+        }), 500
+
+
 @app.route("/api/fleet", methods=["GET"])
 def api_fleet():
     """Tüm HPR makineleri karşılaştırmalı analiz."""
     usta = _get_usta()
-    if not usta or not usta.is_ready:
-        return jsonify({"analysis": "AI Usta Başı kullanılamıyor.", "source": "error"})
+    if not usta:
+        return jsonify({"analysis": "AI Usta Başı başlatılamadı.", "source": "error"})
 
     machines = build_machines_payload()
     all_ctx  = {m["id"]: _build_context_for(m["id"], m) for m in machines}

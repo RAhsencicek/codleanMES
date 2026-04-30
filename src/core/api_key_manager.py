@@ -9,12 +9,18 @@ API Key Rotation Manager
 import os
 import time
 import json
+import logging
 import threading
 from datetime import datetime, date
 from typing import Optional
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logger = logging.getLogger("api_key_manager")
+
+
+_USAGE_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "api_usage.json")
 
 
 class APIKeyRotationManager:
@@ -33,12 +39,14 @@ class APIKeyRotationManager:
         # Aktif key index
         self.current_key_index = self._find_first_available_key()
         
+        total_used = sum(u['count'] for u in self.usage_data.values())
         print(f"🔑 API Key Rotation Manager:")
         print(f"   📊 Toplam key: {len(self.api_keys)}")
         print(f"   📈 Max request/key/gün: {self.max_requests_per_day}")
         print(f"   🎯 Toplam kapasite: {len(self.api_keys) * self.max_requests_per_day} request/gün")
         print(f"   ✅ Rotation: {'AKTİF' if self.rotation_enabled else 'PASİF'}")
         print(f"   🔧 Aktif key: #{self.current_key_index + 1}")
+        print(f"   📦 Bugün kullanılan: {total_used}")
     
     def _load_api_keys(self) -> list:
         """API key'lerini .env'den yükle"""
@@ -57,10 +65,31 @@ class APIKeyRotationManager:
         return []
     
     def _load_usage_data(self) -> dict:
-        """Kullanım verisini yükle (bugün için)"""
+        """Kullanım verisini diskten yükle (bugün için). Dosya yoksa sıfırdan başlat."""
         today = str(date.today())
         
-        # Her key için kullanım sayacı
+        # Diskten yüklemeyi dene
+        try:
+            if os.path.exists(_USAGE_FILE):
+                with open(_USAGE_FILE, 'r') as f:
+                    saved = json.load(f)
+                # Sadece bugünün verisini yükle
+                gemini_data = saved.get("gemini", {})
+                if gemini_data.get("_date") == today:
+                    usage = {}
+                    for i, key in enumerate(self.api_keys):
+                        saved_entry = gemini_data.get(str(i), {})
+                        usage[i] = {
+                            'count': saved_entry.get('count', 0),
+                            'date': today,
+                            'last_used': saved_entry.get('last_used')
+                        }
+                    logger.info(f"[GEMINI] Kullanım verisi diskten yüklendi: {sum(u['count'] for u in usage.values())} request")
+                    return usage
+        except Exception as e:
+            logger.warning(f"[GEMINI] Kullanım verisi yüklenemedi: {e}")
+        
+        # Yeni gün veya dosya yok — sıfırdan başlat
         usage = {}
         for i, key in enumerate(self.api_keys):
             usage[i] = {
@@ -70,6 +99,36 @@ class APIKeyRotationManager:
             }
         
         return usage
+    
+    def _save_usage_data(self):
+        """Kullanım verisini diske kaydet."""
+        try:
+            # Mevcut dosyayı oku (Groq verisi korunsun)
+            existing = {}
+            if os.path.exists(_USAGE_FILE):
+                try:
+                    with open(_USAGE_FILE, 'r') as f:
+                        existing = json.load(f)
+                except Exception:
+                    pass
+            
+            # Gemini verisini güncelle
+            gemini_data = {"_date": str(date.today())}
+            for i, usage in self.usage_data.items():
+                gemini_data[str(i)] = {
+                    'count': usage['count'],
+                    'date': usage['date'],
+                    'last_used': usage['last_used']
+                }
+            existing["gemini"] = gemini_data
+            
+            # Dizin yoksa oluştur
+            os.makedirs(os.path.dirname(_USAGE_FILE), exist_ok=True)
+            
+            with open(_USAGE_FILE, 'w') as f:
+                json.dump(existing, f, indent=2, default=str)
+        except Exception as e:
+            logger.warning(f"[GEMINI] Kullanım verisi kaydedilemedi: {e}")
     
     def _find_first_available_key(self) -> int:
         """İlk müsait key'i bul"""
@@ -96,7 +155,7 @@ class APIKeyRotationManager:
         return self.api_keys[self.current_key_index]
     
     def record_usage(self, success: bool = True):
-        """Key kullanımını kaydet"""
+        """Key kullanımını kaydet — başarılı ve başarısız tüm istekler sayılır (Gemini kotası her çağrıyı sayar)."""
         with self.usage_lock:
             today = str(date.today())
             current_usage = self.usage_data[self.current_key_index]
@@ -106,17 +165,20 @@ class APIKeyRotationManager:
                 current_usage['count'] = 0
                 current_usage['date'] = today
             
-            # Sadece başarılı request'leri say
-            if success:
-                current_usage['count'] += 1
-                current_usage['last_used'] = datetime.now().isoformat()
-                
-                print(f"📊 Key #{self.current_key_index + 1}: "
-                      f"{current_usage['count']}/{self.max_requests_per_day} request")
-                
-                # Kota dolduysa sonraki key'e geç
-                if current_usage['count'] >= self.max_requests_per_day:
-                    self._rotate_to_next_key()
+            # Gemini gerçek kotayı her çağrıda sayar (başarılı/başarısız fark etmez)
+            current_usage['count'] += 1
+            current_usage['last_used'] = datetime.now().isoformat()
+            
+            status_icon = "✅" if success else "❌"
+            print(f"📊 {status_icon} Gemini Key #{self.current_key_index + 1}: "
+                  f"{current_usage['count']}/{self.max_requests_per_day} request")
+            
+            # Diske kaydet
+            self._save_usage_data()
+            
+            # Kota dolduysa sonraki key'e geç
+            if current_usage['count'] >= self.max_requests_per_day:
+                self._rotate_to_next_key()
     
     def _rotate_to_next_key(self):
         """Sonraki kullanılabilir key'e geç"""
@@ -261,21 +323,26 @@ class GroqKeyRotationManager:
     """Groq API key rotation manager (Gemini ile aynı mantık)"""
     
     def __init__(self):
-        self.api_keys = self._load_api_keys()
-        self.max_requests_per_day = int(os.getenv('GROQ_MAX_REQUESTS_PER_DAY', '50'))
-        self.rotation_enabled = os.getenv('API_KEY_ROTATION_ENABLED', 'true').lower() == 'true'
-        
-        self.usage_lock = threading.Lock()
-        self.usage_data = self._load_usage_data()
-        self.current_key_index = self._find_first_available_key()
-        
-        if self.api_keys:
-            print(f"🔑 Groq API Key Rotation Manager:")
-            print(f"   📊 Toplam key: {len(self.api_keys)}")
-            print(f"   📈 Max request/key/gün: {self.max_requests_per_day}")
-            print(f"   🎯 Toplam kapasite: {len(self.api_keys) * self.max_requests_per_day} request/gün")
-            print(f"   ✅ Rotation: {'AKTİF' if self.rotation_enabled else 'PASİF'}")
-            print(f"   🔧 Aktif key: #{self.current_key_index + 1}")
+        try:
+            self.api_keys = self._load_api_keys()
+            self.max_requests_per_day = int(os.getenv('GROQ_MAX_REQUESTS_PER_DAY', '50'))
+            self.rotation_enabled = os.getenv('API_KEY_ROTATION_ENABLED', 'true').lower() == 'true'
+            
+            self.usage_lock = threading.Lock()
+            self.usage_data = self._load_usage_data()
+            self.current_key_index = self._find_first_available_key()
+            
+            if self.api_keys:
+                print(f"🔑 Groq API Key Rotation Manager:")
+                print(f"   📊 Toplam key: {len(self.api_keys)}")
+                print(f"   📈 Max request/key/gün: {self.max_requests_per_day}")
+                print(f"   🎯 Toplam kapasite: {len(self.api_keys) * self.max_requests_per_day} request/gün")
+                print(f"   ✅ Rotation: {'AKTİF' if self.rotation_enabled else 'PASİF'}")
+                print(f"   🔧 Aktif key: #{self.current_key_index + 1}")
+        except Exception as e:
+            import logging
+            logging.getLogger("api_key_manager").error(f"❌ Groq manager başlatma hatası: {e}")
+            raise
     
     def _load_api_keys(self) -> list:
         keys_env = os.getenv('GROQ_API_KEYS', '')
@@ -287,6 +354,26 @@ class GroqKeyRotationManager:
     
     def _load_usage_data(self) -> dict:
         today = str(date.today())
+        # Diskten yüklemeyi dene
+        try:
+            if os.path.exists(_USAGE_FILE):
+                with open(_USAGE_FILE, 'r') as f:
+                    saved = json.load(f)
+                groq_data = saved.get("groq", {})
+                if groq_data.get("_date") == today:
+                    usage = {}
+                    for i, key in enumerate(self.api_keys):
+                        saved_entry = groq_data.get(str(i), {})
+                        usage[i] = {
+                            'count': saved_entry.get('count', 0),
+                            'date': today,
+                            'last_used': saved_entry.get('last_used')
+                        }
+                    logger.info(f"[GROQ] Kullanım verisi diskten yüklendi: {sum(u['count'] for u in usage.values())} request")
+                    return usage
+        except Exception as e:
+            logger.warning(f"[GROQ] Kullanım verisi yüklenemedi: {e}")
+        
         usage = {}
         for i, key in enumerate(self.api_keys):
             usage[i] = {
@@ -295,6 +382,32 @@ class GroqKeyRotationManager:
                 'last_used': None
             }
         return usage
+    
+    def _save_usage_data(self):
+        """Groq kullanım verisini diske kaydet."""
+        try:
+            existing = {}
+            if os.path.exists(_USAGE_FILE):
+                try:
+                    with open(_USAGE_FILE, 'r') as f:
+                        existing = json.load(f)
+                except Exception:
+                    pass
+            
+            groq_data = {"_date": str(date.today())}
+            for i, usage in self.usage_data.items():
+                groq_data[str(i)] = {
+                    'count': usage['count'],
+                    'date': usage['date'],
+                    'last_used': usage['last_used']
+                }
+            existing["groq"] = groq_data
+            
+            os.makedirs(os.path.dirname(_USAGE_FILE), exist_ok=True)
+            with open(_USAGE_FILE, 'w') as f:
+                json.dump(existing, f, indent=2, default=str)
+        except Exception as e:
+            logger.warning(f"[GROQ] Kullanım verisi kaydedilemedi: {e}")
     
     def _find_first_available_key(self) -> int:
         today = str(date.today())
@@ -308,10 +421,14 @@ class GroqKeyRotationManager:
     
     def get_api_key(self) -> str:
         with self.usage_lock:
+            if not self.api_keys:
+                return None
             return self.api_keys[self.current_key_index]
     
     def record_usage(self, success: bool = True):
         with self.usage_lock:
+            if not self.api_keys:
+                return
             today = str(date.today())
             current_usage = self.usage_data[self.current_key_index]
             
@@ -319,15 +436,23 @@ class GroqKeyRotationManager:
                 current_usage['count'] = 0
                 current_usage['date'] = today
             
-            if success:
-                current_usage['count'] += 1
-                current_usage['last_used'] = datetime.now().isoformat()
-                
-                print(f"📊 Groq Key #{self.current_key_index + 1}: "
-                      f"{current_usage['count']}/{self.max_requests_per_day} request")
-                
-                if current_usage['count'] >= self.max_requests_per_day:
-                    self._rotate_to_next_key()
+            # Tüm istekleri say
+            current_usage['count'] += 1
+            current_usage['last_used'] = datetime.now().isoformat()
+            
+            status_icon = "✅" if success else "❌"
+            print(f"📊 {status_icon} Groq Key #{self.current_key_index + 1}: "
+                  f"{current_usage['count']}/{self.max_requests_per_day} request")
+            
+            logger.info(
+                f"Groq Key #{self.current_key_index + 1}: {current_usage['count']}/{self.max_requests_per_day} request"
+            )
+            
+            # Diske kaydet
+            self._save_usage_data()
+            
+            if current_usage['count'] >= self.max_requests_per_day:
+                self._rotate_to_next_key()
     
     def _rotate_to_next_key(self):
         if not self.rotation_enabled:
@@ -355,15 +480,43 @@ class GroqKeyRotationManager:
 
 # Global Groq rotation manager
 _groq_rotation_manager: Optional[GroqKeyRotationManager] = None
+_groq_manager_lock = threading.Lock()
 
-def get_groq_rotation_manager() -> GroqKeyRotationManager:
+
+def get_groq_rotation_manager() -> Optional[GroqKeyRotationManager]:
+    """Thread-safe singleton — başlatma başarısız olursa None döner (raise yapmaz)."""
     global _groq_rotation_manager
     if _groq_rotation_manager is None:
-        _groq_rotation_manager = GroqKeyRotationManager()
+        with _groq_manager_lock:
+            if _groq_rotation_manager is None:
+                try:
+                    _groq_rotation_manager = GroqKeyRotationManager()
+                    logger.info(f"[GROQ] GroqKeyRotationManager başlatıldı, {len(_groq_rotation_manager.api_keys)} anahtar yüklendi")
+                except Exception as e:
+                    logger.error(f"[GROQ] GroqKeyRotationManager başlatılamadı: {e}")
+                    return None
     return _groq_rotation_manager
 
-def get_groq_api_key() -> str:
-    return get_groq_rotation_manager().get_api_key()
 
-def record_groq_usage(success: bool = True):
-    get_groq_rotation_manager().record_usage(success)
+def get_groq_api_key() -> Optional[str]:
+    """Groq API key alır — manager yoksa veya key yoksa None döner (raise yapmaz)."""
+    manager = get_groq_rotation_manager()
+    if manager is None:
+        logger.error("[GROQ] get_groq_api_key: GroqKeyRotationManager başlatılamadı!")
+        return None
+    key = manager.get_api_key()
+    if key is None:
+        logger.error("[GROQ] get_groq_api_key: Kullanılabilir Groq API key yok! GROQ_API_KEYS tanımlı mı?")
+    return key
+
+
+def record_groq_usage(api_key: str = None, success: bool = True):
+    """Groq API kullanımını kaydeder — manager None ise sessizce atlar."""
+    manager = get_groq_rotation_manager()
+    if manager is None:
+        logger.warning("[GROQ] record_groq_usage çağrıldı ama GroqKeyRotationManager None — kayıt atlanıyor")
+        return
+    try:
+        manager.record_usage(success)
+    except Exception as e:
+        logger.error(f"[GROQ] usage kayıt hatası: {e}")

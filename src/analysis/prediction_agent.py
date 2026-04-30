@@ -771,6 +771,17 @@ class PredictionAgent:
             else:
                 lines.append(f"- Teşhis: {diagnosis.get('fault_type', 'Bilinmeyen')}")
 
+        # ── ML MODEL TAHMİNİ (YENİ) ─────────────────────────────────────────
+        ml_pred = context.get("ml_prediction")
+        if ml_pred and ml_pred.get("active"):
+            lines.append("")
+            lines.append("ML MODEL TAHMİNİ:")
+            lines.append(f"- Anomali Skoru: {ml_pred.get('anomaly_score', 0):.3f}")
+            lines.append(f"- ML Risk Skoru: {ml_pred.get('risk_score_ml', 0):.1f}/100")
+            top_features = ml_pred.get("top_features", [])
+            if top_features:
+                lines.append(f"- En Önemli Faktörler: {', '.join(top_features)}")
+
         lines.extend(["", _JSON_OUTPUT_SCHEMA, ""])
         lines.append("ÇIKTI: Sadece JSON döndür, başka metin yazma.")
 
@@ -950,22 +961,25 @@ class PredictionAgent:
                     try:
                         # Groq client
                         groq_key = get_groq_api_key()
-                        groq_client = groq.Groq(api_key=groq_key)
+                        if not groq_key:
+                            log.warning("[PREDICTION] Groq API key yok — fallback atlanıyor")
+                        else:
+                            groq_client = groq.Groq(api_key=groq_key)
 
-                        groq_response = groq_client.chat.completions.create(
-                            model='llama-3.3-70b-versatile',
-                            messages=[
-                                {"role": "system", "content": _PREDICTION_SYSTEM_PROMPT},
-                                {"role": "user", "content": prompt}
-                            ],
-                            temperature=0.3,
-                            max_tokens=4096,
-                        )
+                            groq_response = groq_client.chat.completions.create(
+                                model='llama-3.3-70b-versatile',
+                                messages=[
+                                    {"role": "system", "content": _PREDICTION_SYSTEM_PROMPT},
+                                    {"role": "user", "content": prompt}
+                                ],
+                                temperature=0.3,
+                                max_tokens=4096,
+                            )
 
-                        result_container[0] = groq_response.choices[0].message.content.strip()
-                        record_groq_usage(success=True)
-                        log.info("[PREDICTION] Groq fallback başarılı!")
-                        return  # Groq başarılı, çık
+                            result_container[0] = groq_response.choices[0].message.content.strip()
+                            record_groq_usage(success=True)
+                            log.info("[PREDICTION] Groq fallback başarılı!")
+                            return  # Groq başarılı, çık
 
                     except Exception as groq_err:
                         log.exception("[PREDICTION] Groq fallback da başarısız: %s", groq_err)
