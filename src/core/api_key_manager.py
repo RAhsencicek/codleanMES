@@ -251,3 +251,119 @@ def print_api_usage_report():
               f"{key_info['used']}/{key_info['max']}")
     
     print("="*60 + "\n")
+
+
+# ═══════════════════════════════════════════════════════
+# Groq API Key Rotation Manager
+# ═══════════════════════════════════════════════════════
+
+class GroqKeyRotationManager:
+    """Groq API key rotation manager (Gemini ile aynı mantık)"""
+    
+    def __init__(self):
+        self.api_keys = self._load_api_keys()
+        self.max_requests_per_day = int(os.getenv('GROQ_MAX_REQUESTS_PER_DAY', '50'))
+        self.rotation_enabled = os.getenv('API_KEY_ROTATION_ENABLED', 'true').lower() == 'true'
+        
+        self.usage_lock = threading.Lock()
+        self.usage_data = self._load_usage_data()
+        self.current_key_index = self._find_first_available_key()
+        
+        if self.api_keys:
+            print(f"🔑 Groq API Key Rotation Manager:")
+            print(f"   📊 Toplam key: {len(self.api_keys)}")
+            print(f"   📈 Max request/key/gün: {self.max_requests_per_day}")
+            print(f"   🎯 Toplam kapasite: {len(self.api_keys) * self.max_requests_per_day} request/gün")
+            print(f"   ✅ Rotation: {'AKTİF' if self.rotation_enabled else 'PASİF'}")
+            print(f"   🔧 Aktif key: #{self.current_key_index + 1}")
+    
+    def _load_api_keys(self) -> list:
+        keys_env = os.getenv('GROQ_API_KEYS', '')
+        if keys_env:
+            keys = [k.strip() for k in keys_env.split(',') if k.strip()]
+            if keys:
+                return keys
+        return []
+    
+    def _load_usage_data(self) -> dict:
+        today = str(date.today())
+        usage = {}
+        for i, key in enumerate(self.api_keys):
+            usage[i] = {
+                'count': 0,
+                'date': today,
+                'last_used': None
+            }
+        return usage
+    
+    def _find_first_available_key(self) -> int:
+        today = str(date.today())
+        for i, key_usage in self.usage_data.items():
+            if key_usage['date'] != today:
+                key_usage['count'] = 0
+                key_usage['date'] = today
+            if key_usage['count'] < self.max_requests_per_day:
+                return i
+        return 0
+    
+    def get_api_key(self) -> str:
+        with self.usage_lock:
+            return self.api_keys[self.current_key_index]
+    
+    def record_usage(self, success: bool = True):
+        with self.usage_lock:
+            today = str(date.today())
+            current_usage = self.usage_data[self.current_key_index]
+            
+            if current_usage['date'] != today:
+                current_usage['count'] = 0
+                current_usage['date'] = today
+            
+            if success:
+                current_usage['count'] += 1
+                current_usage['last_used'] = datetime.now().isoformat()
+                
+                print(f"📊 Groq Key #{self.current_key_index + 1}: "
+                      f"{current_usage['count']}/{self.max_requests_per_day} request")
+                
+                if current_usage['count'] >= self.max_requests_per_day:
+                    self._rotate_to_next_key()
+    
+    def _rotate_to_next_key(self):
+        if not self.rotation_enabled:
+            return
+        
+        today = str(date.today())
+        old_index = self.current_key_index
+        
+        for i in range(len(self.api_keys)):
+            next_index = (old_index + 1 + i) % len(self.api_keys)
+            next_usage = self.usage_data[next_index]
+            
+            if next_usage['date'] != today:
+                next_usage['count'] = 0
+                next_usage['date'] = today
+            
+            if next_usage['count'] < self.max_requests_per_day:
+                self.current_key_index = next_index
+                print(f"🔄 Groq API Key Rotation: #{old_index + 1} → #{next_index + 1}")
+                return
+        
+        self.current_key_index = 0
+        print(f"⚠️  Tüm Groq API key'leri kota sınırında!")
+
+
+# Global Groq rotation manager
+_groq_rotation_manager: Optional[GroqKeyRotationManager] = None
+
+def get_groq_rotation_manager() -> GroqKeyRotationManager:
+    global _groq_rotation_manager
+    if _groq_rotation_manager is None:
+        _groq_rotation_manager = GroqKeyRotationManager()
+    return _groq_rotation_manager
+
+def get_groq_api_key() -> str:
+    return get_groq_rotation_manager().get_api_key()
+
+def record_groq_usage(success: bool = True):
+    get_groq_rotation_manager().record_usage(success)

@@ -775,6 +775,10 @@ async def api_multi_agent_analyze(machine_id):
         "execution_time": round(execution_time, 2),
         "agents_used": result.get("agents_called", []),
         "report": report_data,
+        "diagnosis": result.get("diagnosis"),
+        "root_cause": result.get("root_cause"),
+        "prediction": result.get("prediction"),
+        "action": result.get("action"),
         "metadata": {
             "cache_hit": result.get("cache_hit", False),
             "throttled": report_data.get("status") == "throttled" if isinstance(report_data, dict) else False,

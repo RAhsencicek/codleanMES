@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lottie Animasyon Testi</title>
+    <script src="https://unpkg.com/@lottiefiles/dotlottie-wc@0.9.10/dist/dotlottie-wc.js" type="module"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: Arial, sans-serif;
+        }
+        
+        .test-container {
+            text-align: center;
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        p {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        dotlottie-wc {
+            display: block;
+            margin: 0 auto;
+        }
+        
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        
+        .success {
+            background: #10b981;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🤖 Lottie Animasyon Testi</h1>
+        <p>Eğer animasyon görüyorsanız, çalışıyor demektir!</p>
+        
+        <dotlottie-wc 
+            src="https://lottie.host/d0e7c9d3-3f9f-4d3c-9ffc-7a2af87efad7/2Qnwb5yjtZ.lottie" 
+            stateMachineId="StateMachine1" 
+            style="width: 300px; height: 300px">
+        </dotlottie-wc>
+        
+        <div class="status success">
+            ✅ Lottie yüklenmiş olmalı!
+        </div>
+    </div>
+</body>
+</html>

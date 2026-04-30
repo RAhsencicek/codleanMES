@@ -49,6 +49,14 @@ except ImportError:
 
 log = logging.getLogger("root_cause_agent")
 
+# ─── Groq Fallback (Koşullu Import) ────────────────────────────────────────────
+try:
+    from groq import Groq
+    from src.core.api_key_manager import get_groq_api_key, record_groq_usage
+    _GROQ_AVAILABLE = True
+except ImportError:
+    _GROQ_AVAILABLE = False
+
 # ─── Enumerasyonlar ──────────────────────────────────────────────────────────
 
 
@@ -941,6 +949,33 @@ class RootCauseAgent:
                 record_api_usage(success=True)
             except Exception as e:
                 error_container[0] = e
+                err_str = str(e)
+                
+                # Gemini kotası doldu - Groq fallback dene
+                if _GROQ_AVAILABLE and ("429" in err_str or "quota" in err_str.lower() or "resource_exhausted" in err_str.lower()):
+                    log.warning("[ROOT_CAUSE] Gemini kotası doldu - Groq fallback deneniyor...")
+                    try:
+                        groq_key = get_groq_api_key()
+                        if groq_key:
+                            groq_client = Groq(api_key=groq_key)
+                            groq_response = groq_client.chat.completions.create(
+                                model="llama-3.3-70b-versatile",
+                                messages=[
+                                    {"role": "system", "content": _ROOT_CAUSE_SYSTEM_PROMPT},
+                                    {"role": "user", "content": prompt}
+                                ],
+                                temperature=0.3,
+                                max_tokens=2048,
+                            )
+                            result_container[0] = groq_response.choices[0].message.content.strip()
+                            record_groq_usage(success=True)
+                            log.info("[ROOT_CAUSE] Groq fallback başarılı! (root_cause_agent)")
+                            error_container[0] = None  # Hata temizle
+                            return  # Groq başarılı, çık
+                    except Exception as groq_err:
+                        log.error("[ROOT_CAUSE] Groq fallback da başarısız: %s", groq_err)
+                        record_groq_usage(success=False)
+                
                 # Hata durumunda da kaydet
                 record_api_usage(success=False)
 

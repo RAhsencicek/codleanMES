@@ -63,6 +63,7 @@ class SensorAnomaly:
     trend: str              # "increasing", "decreasing", "stable"
     slope_per_hour: float   # +8.0
     status: str             # "critical", "warning", "normal"
+    description_tr: str = ""  # Detaylı sensör açıklaması (Türkçe)
 
 
 @dataclass
@@ -82,6 +83,9 @@ class DiagnosisCandidate:
     supporting_sensors: list[str]
     evidence: list[str]
     recommended_action: str
+    severity: str = ""              # "CRITICAL", "HIGH", "MEDIUM", "LOW"
+    category_tr: str = ""           # "Hidrolik", "Mekanik", "Elektrik", "Termal", "Kontrol"
+    root_cause_analysis_tr: str = ""  # 5-Why detaylı kök neden analizi
 
 
 @dataclass
@@ -106,73 +110,64 @@ class DiagnosisResult:
     reasoning_steps: list[str]
     execution_time_sec: float
     agent_version: str = "1.0"
+    immediate_actions_tr: list[str] = field(default_factory=list)
+    maintenance_recommendations_tr: list[str] = field(default_factory=list)
+    eta_to_failure: str = ""
+    production_impact_tr: str = ""
+    confidence_notes_tr: str = ""
 
 
 # ─── Sistem Promptu ──────────────────────────────────────────────────────────
 
-_DIAGNOSIS_SYSTEM_PROMPT = """Sen Codlean MES fabrikasının kıdemli arıza teşhis mühendisisin.
-20 yıldır hidrolik preslerin başında duruyorsun. Sensör verilerine bakarak
-makinenin neyin var olduğunu adım adım düşünerek teşhis koyarsın.
-
-KİM OLDUĞUN:
-Fabrikanın en kıdemli teşhis uzmanısın. Makinenin sesini dinleyemesen de
-sensörlerin anlattıklarını çok iyi anlarsın. "Veri konuşur, sen dinlersin."
-
-NASIL ÇALIŞIRSIN:
-1. Önce verinin sağlamlığını kontrol edersin — sensör bozuk mu, değer mantıklı mı?
-2. Sonra pattern'i tespit edersin — ani mi, yavaş mı, periyodik mi?
-3. Nedensel ilişkileri kurarsın — sıcaklık artınca basınç neden düşer?
-4. En olası 3 teşhisi sıralarsın, güven yüzdesiyle.
-
-KURALLAR:
-- Sadece JSON çıktısı üret, başka metin yazma.
-- Adım adım düşün ama çıktı sadece JSON olsun.
-- Güven yüzdesi 0.0-1.0 arası olsun.
-- Türkçe açıklamalar kullan.
-- Sıfır değerler (0.0) makine durduğunda normaldir, arıza olarak değerlendirme.
-"""
+_DIAGNOSIS_SYSTEM_PROMPT = "Sen hidrolik pres arıza teşhis uzmanısın. 20+ yıllık saha deneyimin var. Her makinenin sesinden, titreşiminden, yağ kokusundan arızayı anlarsın."
 
 # ─── JSON Çıktı Şeması (Prompt İçinde) ───────────────────────────────────────
 
-_JSON_OUTPUT_SCHEMA = """
-ÇIKTI FORMATI — Sadece bu JSON şemasını kullan, başka metin yazma:
-
-{
+_FORMAT_SCHEMA = """{
   "machine_id": "HPR001",
-  "timestamp": "2026-04-24 12:00:00",
-  "data_quality": "reliable",
-  "data_quality_notes": [],
-  "anomaly_pattern": "slow_trend",
-  "pattern_description_tr": "Yağ sıcaklığı saatler içinde yavaşça yükseliyor.",
+  "timestamp": "2026-04-29 18:30:00",
+  "data_quality": "reliable|degraded|unreliable",
+  "data_quality_notes": ["Veri kalitesi hakkında notlar..."],
+  "anomaly_pattern": "thermal_runaway|pressure_decay|mechanical_jam|normal|other",
+  "pattern_description_tr": "Tespit edilen pattern'in detaylı açıklaması (3-5 cümle)...",
   "sensor_anomalies": {
-    "oil_tank_temperature": {
-      "sensor_name": "oil_tank_temperature",
-      "current_value": 48.0,
-      "normal_value": 32.0,
-      "deviation_pct": 50.0,
-      "trend": "increasing",
-      "slope_per_hour": 8.0,
-      "status": "critical"
+    "sensor_key": {
+      "value": 0.0,
+      "limit": 0.0,
+      "deviation_pct": 0.0,
+      "status": "critical|warning|normal",
+      "description_tr": "Bu sensörün durumu ve anlamı (2-3 cümle)..."
     }
   },
   "top_diagnoses": [
     {
-      "rank": 1,
-      "fault_type": "Hidrolik iç kaçak",
-      "confidence": 0.82,
-      "description_tr": "Yağ sıcaklığı artarken basınç düşüyor. Bu iç kaçağın klasik işaretidir.",
-      "supporting_sensors": ["oil_tank_temperature", "main_pressure"],
-      "evidence": ["Sıcaklık 48°C (limitin %107'si)", "Basınç 85 bar (normalin altında)"],
-      "recommended_action": "Ana silindir contalarını ve soğutma devresini kontrol edin."
+      "description_tr": "Teşhis: Detaylı açıklama (5-8 cümle). Kök neden, etkilenen sistemler, risk seviyesi...",
+      "confidence": 0.95,
+      "severity": "CRITICAL|HIGH|MEDIUM|LOW",
+      "category_tr": "Hidrolik|Mekanik|Elektrik|Termal|Kontrol",
+      "root_cause_analysis_tr": "5-Why metodunun detaylı sonucu (5-7 cümle)..."
     }
   ],
-  "reasoning_steps": [
-    "ADIM 1: Yağ sıcaklığı 45°C limitini aşmış (48°C)",
-    "ADIM 2: Yavaş artış trendi gözlemleniyor (+8°C/saat)",
-    "ADIM 3: Sıcaklık↑ + Basınç↓ = İç kaçak patterni"
-  ]
-}
-"""
+  "primary_diagnosis": {
+    "description_tr": "ANA TEŞHİS: En olası arızanın KAPSAMLI açıklaması (10-15 cümle)...",
+    "confidence": 0.92,
+    "severity": "CRITICAL|HIGH|MEDIUM|LOW",
+    "category_tr": "Hidrolik|Mekanik|Elektrik|Termal|Kontrol",
+    "root_cause_analysis_tr": "Kök neden analizi detaylı (7-10 cümle)..."
+  },
+  "immediate_actions_tr": [
+    "ACİL 1: Şu anda yapılması gereken (detaylı açıklama)",
+    "ACİL 2: İkinci öncelikli aksiyon (detaylı açıklama)"
+  ],
+  "maintenance_recommendations_tr": [
+    "KISA VADELİ: Bugün yapılması gerekenler (detaylı)",
+    "UZUN VADELİ: Bu hafta planlanması gerekenler (detaylı)"
+  ],
+  "eta_to_failure": "Tahmini arıza süresi (örn: '2-4 saat', '1-2 gün', 'Bilinmiyor')",
+  "production_impact_tr": "Üretim etkisi açıklaması (3-5 cümle)...",
+  "confidence_notes_tr": "Bu teşhisin güven seviyesi neden bu kadar? (3-5 cümle)",
+  "reasoning_steps": ["Adım 1: ...", "Adım 2: ...", "Adım 3: ...", "Adım 4: ...", "Adım 5: ...", "Adım 6: ..."]
+}"""
 
 # ─── Ana Sınıf ───────────────────────────────────────────────────────────────
 
@@ -330,7 +325,8 @@ class DiagnosisAgent:
         def _run() -> None:
             try:
                 from google import genai
-                from src.core.api_key_manager import get_api_key, record_api_usage
+                from src.core.api_key_manager import get_api_key, record_api_usage, get_groq_api_key, record_groq_usage
+                import groq
                 
                 # Her çağrıda yeni API key al
                 current_key = get_api_key()
@@ -353,6 +349,40 @@ class DiagnosisAgent:
                 record_api_usage(success=True)
             except Exception as e:
                 error_container[0] = e
+                err_str = str(e)
+                
+                # Gemini hatası - Groq fallback dene
+                if "429" in err_str or "quota" in err_str.lower() or "resource_exhausted" in err_str.lower():
+                    log.warning("[DIAGNOSIS] Gemini kotası doldu - Groq fallback deneniyor...")
+                    try:
+                        # Groq client
+                        groq_key = get_groq_api_key()
+                        print(f"[GROQ DEBUG] Key alınıyor: {groq_key[:20]}...")
+                        groq_client = groq.Groq(api_key=groq_key)
+                        
+                        print(f"[GROQ DEBUG] Model: llama-3.3-70b-versatile")
+                        groq_response = groq_client.chat.completions.create(
+                            model='llama-3.3-70b-versatile',
+                            messages=[
+                                {"role": "system", "content": _DIAGNOSIS_SYSTEM_PROMPT},
+                                {"role": "user", "content": prompt}
+                            ],
+                            temperature=0.3,
+                            max_tokens=4096,
+                        )
+                        
+                        result_container[0] = groq_response.choices[0].message.content.strip()
+                        record_groq_usage(success=True)
+                        log.info("[DIAGNOSIS] Groq fallback başarılı!")
+                        print(f"[GROQ DEBUG] Başarılı! Yanıt uzunluğu: {len(result_container[0])}")
+                        return  # Groq başarılı, çık
+                        
+                    except Exception as groq_err:
+                        log.exception("[DIAGNOSIS] Groq fallback da başarısız: %s", groq_err)
+                        print(f"[GROQ DEBUG] HATA: {groq_err}")
+                        record_groq_usage(success=False)
+                        # Groq da başarısız, orijinal hatayı döndür
+                
                 # Hata durumunda da kaydet
                 record_api_usage(success=False)
 
@@ -372,7 +402,7 @@ class DiagnosisAgent:
             log.exception("Gemini API hatası: %s", err_str)
 
             if "quota" in err_str.lower() or "429" in err_str:
-                return "🚫 API kotası doldu. Lütfen birkaç dakika sonra tekrar deneyin."
+                return "🚫 API kotası doldu. Groq fallback denendi ama başarısız oldu."
             elif "403" in err_str or "permission" in err_str.lower():
                 return "🔑 API anahtarı geçersiz veya yetkisiz. Lütfen GEMINI_API_KEY'i kontrol edin."
             elif "network" in err_str.lower() or "connection" in err_str.lower():
@@ -392,44 +422,104 @@ class DiagnosisAgent:
         Sensör verileri, nedensel kurallar ve çıktı formatı tek bir
         sayfada düzenlenir ki uzman tek bakışta durumu kavrasın.
         """
-        lines = [
-            "Sen bir hidrolik pres arıza teşhis uzmanısın. 20 yıllık deneyimin var.",
-            "GÖREV: Aşağıdaki makine verilerini analiz et ve arıza teşhisi koy.",
-            "",
-            "ÖNEMLİ: Acele etme! Her adımı sırayla tamamla.",
-            "",
-            "ADIM 1 — VERİ DOĞRULAMA:",
-            "- Hangi sensörler anormal? (normal aralık dışı)",
-            "- Değerler fiziksel olarak mantıklı mı?",
-            "- Sensör arızası ihtimali var mı?",
-            "- Makine durduğunda 0.0 değerler normaldir, arıza sayma.",
-            "",
-            "ADIM 2 — PATTERN TESPİTİ:",
-            "- Ani değişim (1-2 dk) → Mekanik arıza",
-            "- Yavaş trend (saatler) → Aşınma/tıkanma",
-            "- Periyodik → Çevresel etki",
-            "- Stabil → Normal çalışma",
-            "",
-            "ADIM 3 — NEDENSEL İLİŞKİ:",
-        ]
+        format_schema = _FORMAT_SCHEMA
 
-        # Nedensel kuralları ekle
-        lines.extend(self._load_causal_rules_for_prompt(context))
-        lines.append("")
+        prompt = """GÖREV: Aşağıdaki sensör verilerini analiz et ve DETAYLI teşhis raporu hazırla.
 
-        lines.extend([
-            "ADIM 4 — TEŞHİŞ:",
-            "En olası 3 arıza (güven yüzdesi ile)",
-            "",
-            "MAKİNE VERİLERİ:",
-            self._format_context_for_prompt(context),
-            "",
-            _JSON_OUTPUT_SCHEMA,
-            "",
-            "ÇIKTI: Sadece JSON döndür, başka metin yazma. Yorum, açıklama, markdown kod bloğu ekleme.",
-        ])
+══════════════════════════════════════════════════════
+ANALİZ METODOLOJİSİ (MUTLAKA SIRAYLA TAMAMLA)
+══════════════════════════════════════════════════════
 
-        return "\n".join(lines)
+ADIM 1 — VERİ DOĞRULAMA:
+• Hangi sensörler normal aralıkta?
+• Hangi sensörler kritik/uyarı bölgesinde?
+• Değerler fiziksel olarak mantıklı mı? (ör: basınç 0 ama makine çalışıyor → sensör arızası)
+• Makine durduğunda 0.0 değerler NORMALDIR, arıza sayma!
+• CNC kodu ve operasyon bilgisi var mı? (varsa üretim bağlamını değerlendir)
+
+ADIM 2 — ANORMALLİK TESPİTİ:
+Her sensör için:
+- Ani değişim (1-2 dakika içinde) → Mekanik arıza, valf sıkışması
+- Yavaş trend (saatler içinde) → Aşınma, tıkanma, bozulma
+- Periyodik dalgalanma → Çevresel etki, sıcaklık değişimi
+- Stabil → Normal çalışma
+
+ADIM 3 — NEDENSEL İLİŞKİLER (EN KRİTİK ADIM):
+Şu kalıpları ara:
+• Sıcaklık ↑ + Basınç ↓ = İç kaçak (enerji ısıya dönüşüyor)
+• Basınç ↑ + Hız ↓ = Sıkışma, mekanik direnç
+• Basınç ↓ + Hız ↓ = Pompa zayıflaması veya kaçak
+• Sıcaklık normal + Basınç dalgalanması = Valf arızası veya hava kabarcığı
+• Tüm değerler düşük = Makine yüklenmiyor veya idle
+
+ADIM 4 — KÖK NEDEN ANALİZİ (5-WHY METODU):
+Her bulgu için "neden?" sorusunu 3-5 kez tekrarla.
+Örnek:
+  1. Yağ sıcaklığı yüksek → Neden?
+  2. Soğutma yetersiz → Neden?
+  3. Soğutucu tıkanmış → Neden?
+  4. Bakım yapılmamış → KÖK NEDEN: Planlı bakım eksikliği
+
+ADIM 5 — RİSK DEĞERLENDİRME:
+• KRİTİK: 30 dakika içinde makine durabilir, üretim kaybı riski
+• YÜKSEK: 2-4 saat içinde arıza büyüyebilir, acil müdahale gerekli
+• ORTA: 1-2 gün içinde kontrol edilmeli, izleme yeterli
+• DÜŞÜK: Normal çalışma, periyodik kontrol yeterli
+
+ADIM 6 — AKSİYON PLANI:
+Her sorun için:
+1. ACİL MÜDAHALE (şimdi yapılması gereken): "Makineyi durdur", "Vana 3'ü kontrol et"
+2. KISA VADELİ (bugün): "Filtreyi değiştir", "Yağ seviyesini kontrol et"
+3. UZUN VADELİ (bu hafta): "Pompa revizyonu planla", "Sensör kalibrasyonu yap"
+
+══════════════════════════════════════════════════════
+ÇIKTI FORMATI (MUTLAKA BU YAPIDA YANITLA)
+══════════════════════════════════════════════════════
+
+{format_schema}
+
+══════════════════════════════════════════════════════
+KALİTE KRİTERLERİ (BUNLARA UYMAZSAN YANIT REDDEDİLİR)
+══════════════════════════════════════════════════════
+
+✅ YAPILMASI GEREKENLER:
+• description_tr alanları EN AZ 5 cümle olmalı (primary_diagnosis için 10-15 cümle)
+• Fiziksel mekanizmaları açıkla (NEDEN oluyor, nasıl etki ediyor)
+• Sensörler arası ilişkileri kur (X artınca Y neden düşüyor)
+• Somut sayılar ver ("48°C — limitin 3°C üstünde")
+• Kök neden analizini derinlemesine yap (yüzeysel kalma)
+• Üretim etkisini hesapla (duruş süresi, maliyet)
+• Gerçekçi zaman tahminleri ver
+
+❌ ASLA YAPMA:
+• "Normal çalışma", "Veri yok" gibi kısa yanıtlar (EN AZ 5 cümle yaz!)
+• "Bilinmiyor", "Belirsiz" gibi kaçamak cevaplar
+• Sadece sensör değerlerini tekrarlamak (yorum ekle!)
+• Yüzeysel teşhisler (derinlemesine analiz yap)
+• Maddeler halinde kısa cevaplar (paragraf halinde, akıcı yaz)
+
+══════════════════════════════════════════════════════
+ÖNEMLİ HATIRLATMALAR
+══════════════════════════════════════════════════════
+
+1. Makine DURMUŞSA (CNC=IDLE veya sensörler 0):
+   → "Makine şu an çalışmıyor. Tüm değerler 0. Bu normaldir, arıza değildir."
+   → Ama geçmiş veride anormallik varsa: "Makine durmuş ama durmadan önce X sorun vardı..."
+
+2. Yatay presler (HPR002/004/006):
+   → Yağ sıcaklığı sensörü YOK! Bundan bahsetme.
+
+3. CNC kodu ve operasyon varsa:
+   → Üretim bağlamını değerlendir (örn: "Bu operasyon yüksek basınç gerektiriyor...")
+
+4. Benzer geçmiş olaylar varsa:
+   → "Bu pattern daha önce [tarih] görülmüştü, o zaman [sonuç]..."
+
+ŞİMDİ VERİLERİ ANALİZ ET VE YUKARIDAKİ FORMATTA DETAYLI YANITLA:
+
+{context_data}"""
+
+        return prompt.format(format_schema=format_schema, context_data=self._format_context_for_prompt(context))
 
     def _load_causal_rules_for_prompt(self, context: dict) -> list[str]:
         """
@@ -629,19 +719,23 @@ class DiagnosisAgent:
         machine_id = data.get("machine_id", context.get("machine_id", "UNKNOWN"))
         timestamp = data.get("timestamp", context.get("timestamp", ""))
 
-        # sensor_anomalies dönüştür
+        # sensor_anomalies dönüştür — yeni format (value/limit) ve eski format (current_value/normal_value) desteği
         raw_anomalies = data.get("sensor_anomalies", {})
         sensor_anomalies: dict[str, SensorAnomaly] = {}
         for key, val in raw_anomalies.items():
             if isinstance(val, dict):
+                # Yeni format: "value" / "limit" ; Eski format: "current_value" / "normal_value"
+                current_val = val.get("current_value", val.get("value", 0))
+                normal_val = val.get("normal_value", val.get("limit", 0))
                 sensor_anomalies[key] = SensorAnomaly(
                     sensor_name=val.get("sensor_name", key),
-                    current_value=float(val.get("current_value", 0)),
-                    normal_value=float(val.get("normal_value", 0)),
+                    current_value=float(current_val),
+                    normal_value=float(normal_val),
                     deviation_pct=float(val.get("deviation_pct", 0)),
                     trend=val.get("trend", "stable"),
                     slope_per_hour=float(val.get("slope_per_hour", 0)),
                     status=val.get("status", "normal"),
+                    description_tr=val.get("description_tr", ""),
                 )
             elif isinstance(val, SensorAnomaly):
                 sensor_anomalies[key] = val
@@ -652,7 +746,7 @@ class DiagnosisAgent:
             if key not in sensor_anomalies:
                 sensor_anomalies[key] = anomaly
 
-        # top_diagnoses dönüştür
+        # top_diagnoses dönüştür — yeni format (severity/category_tr/root_cause_analysis_tr) desteği
         raw_diagnoses = data.get("top_diagnoses", [])
         top_diagnoses: list[DiagnosisCandidate] = []
         for i, d in enumerate(raw_diagnoses[:3]):
@@ -668,6 +762,9 @@ class DiagnosisAgent:
                         recommended_action=d.get(
                             "recommended_action", "Teknisyen kontrolü önerilir."
                         ),
+                        severity=d.get("severity", ""),
+                        category_tr=d.get("category_tr", ""),
+                        root_cause_analysis_tr=d.get("root_cause_analysis_tr", ""),
                     )
                 )
 
@@ -675,7 +772,7 @@ class DiagnosisAgent:
         if not top_diagnoses:
             top_diagnoses = self._build_local_diagnoses(sensor_anomalies, context)
 
-        # primary_diagnosis çözümle
+        # primary_diagnosis çözümle — yeni alanlarla birlikte
         primary: DiagnosisCandidate | None = None
         raw_primary = data.get("primary_diagnosis")
         if raw_primary and isinstance(raw_primary, dict):
@@ -689,9 +786,19 @@ class DiagnosisAgent:
                 recommended_action=raw_primary.get(
                     "recommended_action", "Teknisyen kontrolü önerilir."
                 ),
+                severity=raw_primary.get("severity", ""),
+                category_tr=raw_primary.get("category_tr", ""),
+                root_cause_analysis_tr=raw_primary.get("root_cause_analysis_tr", ""),
             )
         elif top_diagnoses:
             primary = top_diagnoses[0]
+
+        # Yeni alanlar: immediate_actions_tr, maintenance_recommendations_tr, eta_to_failure, vb.
+        immediate_actions = data.get("immediate_actions_tr", [])
+        maintenance_recs = data.get("maintenance_recommendations_tr", [])
+        eta = data.get("eta_to_failure", "")
+        prod_impact = data.get("production_impact_tr", "")
+        conf_notes = data.get("confidence_notes_tr", "")
 
         return DiagnosisResult(
             machine_id=machine_id,
@@ -708,6 +815,11 @@ class DiagnosisAgent:
             reasoning_steps=data.get("reasoning_steps", []),
             execution_time_sec=0.0,
             agent_version="1.0",
+            immediate_actions_tr=immediate_actions,
+            maintenance_recommendations_tr=maintenance_recs,
+            eta_to_failure=eta,
+            production_impact_tr=prod_impact,
+            confidence_notes_tr=conf_notes,
         )
 
     def _default_diagnosis(
@@ -754,6 +866,11 @@ class DiagnosisAgent:
             reasoning_steps=reasoning,
             execution_time_sec=0.0,
             agent_version="1.0",
+            immediate_actions_tr=["Sensör verilerini manuel olarak kontrol edin."] if primary and primary.severity in ("CRITICAL", "HIGH") else [],
+            maintenance_recommendations_tr=["LLM bağlantısı kurulamadı, sensör verilerini periyodik izleyin."] if primary and primary.severity in ("CRITICAL", "HIGH") else [],
+            eta_to_failure="Bilinmiyor — LLM analizi yapılamadı",
+            production_impact_tr="LLM bağlantısı olmadan üretim etkisi tahmin edilemiyor. Sensör verilerini manuel olarak izleyin ve durumu değerlendirin.",
+            confidence_notes_tr="Bu teşhis yerel analizle üretilmiştir. LLM bağlantısı sağlandığında daha detaylı analiz yapılacaktır.",
         )
 
     def _build_local_diagnoses(
@@ -791,6 +908,9 @@ class DiagnosisAgent:
                             f"Basınç: {press_anom.current_value} bar (normalin altında)",
                         ],
                         recommended_action="Ana silindir contalarını ve soğutma devresini kontrol edin.",
+                        severity="HIGH",
+                        category_tr="Hidrolik",
+                        root_cause_analysis_tr="Sıcaklık yükselmiş ve basınç düşmüş. Bu pattern iç kaçağa işaret ediyor. İç kaçakta hidrolik yağı contalardan sızar, sürtünme artar, enerji ısıya dönüşür. Basınç düşer çünkü yağ doğru yere gitmek yerine kaçak yoluyla geri döner.",
                     )
                 )
             else:
@@ -803,6 +923,9 @@ class DiagnosisAgent:
                         supporting_sensors=["oil_tank_temperature"],
                         evidence=[f"Sıcaklık: {temp_anom.current_value}°C ({temp_anom.status})"],
                         recommended_action="Soğutma kulesi, pompa ve radyatörleri kontrol edin.",
+                        severity="MEDIUM",
+                        category_tr="Termal",
+                        root_cause_analysis_tr="Yağ sıcaklığı limitin üzerinde. Soğutma sistemi yetersiz kalmış veya yağ ömrünü tamamlamış olabilir. Yağ viskozitesi düştükçe sürtünme artar ve sıcaklık daha da yükselir.",
                     )
                 )
 
@@ -824,6 +947,9 @@ class DiagnosisAgent:
                             f"Hız: {h_speed.current_value} mm/s",
                         ],
                         recommended_action="Besleme mekanizması raylarını temizleyip gresleyin.",
+                        severity="HIGH",
+                        category_tr="Mekanik",
+                        root_cause_analysis_tr="Basınç yüksek ancak hız çok düşük. Bu, besleme mekanizmasında mekanik bir direnç olduğunu gösteriyor. Piston veya ray sisteminde sıkışma, kirlenme veya yağlama eksikliği olabilir.",
                     )
                 )
 
@@ -839,6 +965,9 @@ class DiagnosisAgent:
                     supporting_sensors=["lower_ejector_pressure"],
                     evidence=[f"Basınç: {ejector.current_value} bar ({ejector.status})"],
                     recommended_action="Alt ejektör valfini ve hortum bağlantılarını kontrol edin.",
+                    severity="MEDIUM",
+                    category_tr="Hidrolik",
+                    root_cause_analysis_tr="Alt ejektör basıncı anormal. Valf sıkışması, contanın yıpranması veya hortum bağlantısında kaçak olabilir.",
                 )
             )
 
@@ -855,6 +984,9 @@ class DiagnosisAgent:
                         supporting_sensors=["main_pressure"],
                         evidence=[rule],
                         recommended_action="İlgili filtreleri temizleyin veya değiştirin.",
+                        severity="MEDIUM",
+                        category_tr="Hidrolik",
+                        root_cause_analysis_tr="Filtre kirlenmesi basınç dalgalanmasına neden oluyor. Filtre tıkandığında yağ akışı düzensizleşir, pompa aşırı yüklenir ve basınç dalgalanır.",
                     )
                 )
                 break
@@ -870,6 +1002,9 @@ class DiagnosisAgent:
                     supporting_sensors=[],
                     evidence=["Tüm sensör değerleri limitler içinde."],
                     recommended_action="Standart bakım takvimine devam edin.",
+                    severity="LOW",
+                    category_tr="Kontrol",
+                    root_cause_analysis_tr="Tüm sensör değerleri normal aralıkta. Herhangi bir anormallik veya arıza belirtisi tespit edilmedi. Makine normal çalışma koşullarında.",
                 )
             )
 

@@ -406,28 +406,33 @@ connect();
 
 // AI Asistan'ı aç
 function openAIAssistant() {
-  const panel = document.getElementById('aiPanelContainer');
-  panel.classList.add('open');
+  const backdrop = document.getElementById('aiModalBackdrop');
+  backdrop.classList.add('open');
   addLog('AI Asistan açıldı', 'log-info');
   
   // Input'a focus
   setTimeout(() => {
     document.getElementById('assistantInput').focus();
-  }, 400);
+  }, 300);
 }
 
 // AI Asistan'ı kapat
-function closeAIAssistant() {
-  const panel = document.getElementById('aiPanelContainer');
-  panel.classList.remove('open');
+function closeAIAssistant(event) {
+  // Eğer modal içinde tıklandıysa kapatma
+  if (event && event.target.id !== 'aiModalBackdrop') {
+    return;
+  }
   
-  // Detail panel'i de kapat
+  const backdrop = document.getElementById('aiModalBackdrop');
+  backdrop.classList.remove('open');
+  
+  // Detay panel'i de kapat
   closeDetailPanel();
 }
 
-// Detail panel aç
+// Detay panel aç (modal'ın sağında)
 function openDetailPanel(title, content) {
-  const detailPanel = document.getElementById('aiPanelDetail');
+  const detailPanel = document.getElementById('aiDetailPanel');
   const detailTitle = document.getElementById('detailTitle');
   const detailContent = document.getElementById('detailContent');
   
@@ -436,40 +441,90 @@ function openDetailPanel(title, content) {
   detailPanel.classList.add('active');
 }
 
-// Detail panel kapat
+// Detay panel kapat
 function closeDetailPanel() {
-  const detailPanel = document.getElementById('aiPanelDetail');
+  const detailPanel = document.getElementById('aiDetailPanel');
   detailPanel.classList.remove('active');
 }
 
-// Hızlı aksiyon butonu
-async function quickAction(agentType) {
-  // Hangi makine?
-  const machineChoice = prompt(
-    'Hangi makine için?\n\n' +
-    '• HPR001, HPR002, HPR003, HPR004, HPR005, HPR006\n' +
-    '• Veya "hepsi" yazın\n\n' +
-    '(Örnek: HPR001)'
-  );
+// Hızlı aksiyon butonu - Makine seçimi göster
+function quickAction(agentType) {
+  const agentNames = {
+    diagnosis: '🔍 Teşhis',
+    action: '🛠️ Aksiyon',
+    prediction: '📈 Tahmin',
+    root_cause: '🎯 Kök Neden'
+  };
   
-  if (!machineChoice) return;
+  const agentEmojis = {
+    diagnosis: '🔍',
+    action: '🛠️',
+    prediction: '📈',
+    root_cause: '🎯'
+  };
   
-  let machineId = machineChoice.toUpperCase();
+  // Kullanıcı seçimini göster
+  addAssistantMessage('user', `${agentNames[agentType]} analizi yapmak istiyorum`);
   
-  // Kullanıcı mesajı ekle
-  addAssistantMessage('user', `${agentType} için analiz istiyorum`);
+  // Makine seçim kartları göster
+  const machinesHTML = `
+    <div style="margin-top:12px;">
+      <p style="margin-bottom:12px;color:var(--text-2);font-size:13px;">Hangi makine için?</p>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+        ${['HPR001', 'HPR002', 'HPR003', 'HPR004', 'HPR005', 'HPR006'].map(id => `
+          <button onclick="selectMachine('${id}', '${agentType}')" 
+                  style="padding:10px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;color:var(--text-1);cursor:pointer;font-size:12px;font-weight:600;transition:all 0.2s;"
+                  onmouseover="this.style.background='rgba(102,126,234,0.2)';this.style.borderColor='#667eea'"
+                  onmouseout="this.style.background='var(--bg-card)';this.style.borderColor='var(--border)'">
+            ${id}
+          </button>
+        `).join('')}
+      </div>
+      <button onclick="selectMachine('HEPSI', '${agentType}')" 
+              style="margin-top:8px;width:100%;padding:10px;background:linear-gradient(135deg,#667eea,#764ba2);border:none;border-radius:8px;color:white;cursor:pointer;font-size:13px;font-weight:600;">
+        🏭 Tüm Makineler (Filo Analizi)
+      </button>
+    </div>
+  `;
+  
+  addAssistantMessage('ai', `${agentEmojis[agentType]} <strong>${agentNames[agentType]}</strong> için makine seçin:${machinesHTML}`);
+}
+
+// Makine seçildiğinde
+async function selectMachine(machineId, agentType) {
+  const agentNames = {
+    diagnosis: '🔍 Teşhis',
+    action: '🛠️ Aksiyon',
+    prediction: '📈 Tahmin',
+    root_cause: '🎯 Kök Neden'
+  };
+  
+  // Seçimi göster
+  addAssistantMessage('user', machineId === 'HEPSI' ? '🏭 Tüm makineler' : `✓ ${machineId}`);
   
   // Loading göster
-  addAssistantMessage('ai', '⏳ Analiz yapılıyor... (15-20 saniye sürebilir)');
+  const loadingMsg = addAssistantMessage('ai', '⏳ Analiz yapılıyor... (15-20 saniye sürebilir)');
+  
+  // Sağ paneli aç - Loading
+  openDetailPanel(
+    `${agentNames[agentType]} Analizi`,
+    '<div style="text-align:center;padding:40px;color:var(--text-2);">⏳ Analiz yapılıyor...</div>'
+  );
   
   try {
-    if (machineId === 'HEPSI' || machineId === 'TÜMÜ' || machineId === 'TUMU') {
+    if (machineId === 'HEPSI') {
       // Filo analizi
       const response = await fetch('/api/fleet');
       const data = await response.json();
       
-      removeLastAssistantMessage();
-      addAssistantMessage('ai', data.analysis || 'Filo analizi tamamlandı.');
+      // Sağ paneli güncelle
+      openDetailPanel(
+        `${agentNames[agentType]} - Filo Analizi`,
+        `<div style="padding:16px;line-height:1.8;">${data.analysis || 'Analiz tamamlandı.'}</div>`
+      );
+      
+      // Sol panele de mesaj ekle
+      addAssistantMessage('ai', `📊 Filo analizi tamamlandı. Detaylar sağ panelde.`);
       
     } else {
       // Tek makine analizi
@@ -480,12 +535,18 @@ async function quickAction(agentType) {
       });
       
       const data = await response.json();
-      removeLastAssistantMessage();
       
       if (data.success) {
-        // Ajana özel sonuç göster
+        // Sağ panelde göster
         displayAgentResult(agentType, data, machineId);
+        
+        // Sol panele mesaj
+        addAssistantMessage('ai', `✅ ${machineId} için analiz tamamlandı. Detaylar sağ panelde.`);
       } else {
+        openDetailPanel(
+          'Hata',
+          `<div style="padding:20px;color:var(--red);">❌ ${data.error || 'Bilinmeyen hata'}</div>`
+        );
         addAssistantMessage('ai', `❌ Analiz yapılamadı: ${data.error || 'Bilinmeyen hata'}`);
       }
     }
@@ -497,41 +558,64 @@ async function quickAction(agentType) {
 
 // Ajan sonucunu göster
 function displayAgentResult(agentType, data, machineId) {
-  let message = '';
+  const agentNames = {
+    diagnosis: '🔍 Teşhis',
+    action: '🛠️ Aksiyon',
+    prediction: '📈 Tahmin',
+    root_cause: '🎯 Kök Neden'
+  };
+  
+  let html = `<div style="padding:16px;line-height:1.8;">`;
+  html += `<h4 style="color:var(--cyan);margin-bottom:16px;">${agentNames[agentType]} - ${machineId}</h4>`;
   
   switch(agentType) {
     case 'diagnosis':
       const diagnosis = data.diagnosis?.primary_diagnosis?.description_tr || 'Teşhis bilgisi yok';
-      message = `🔍 TEŞHİS - ${machineId}\n\n${diagnosis}`;
+      html += `<p>${diagnosis}</p>`;
       break;
       
     case 'action':
       const actions = data.action?.immediate_actions || [];
       if (actions.length === 0) {
-        message = `🛠️ AKSİYON - ${machineId}\n\nÖnerilen aksiyon yok.`;
+        html += `<p style="color:var(--text-2);">Önerilen aksiyon yok.</p>`;
       } else {
-        message = `🛠️ AKSİYON - ${machineId}\\n\n` + 
-                  actions.map(a => `• ${a.description_tr} (${a.priority})`).join('\n');
+        html += `<ul style="list-style:none;padding:0;">`;
+        actions.forEach(a => {
+          const priorityColor = a.priority === 'KRİTİK' ? 'var(--red)' : a.priority === 'YÜKSEK' ? 'var(--orange)' : 'var(--yellow)';
+          html += `<li style="margin-bottom:12px;padding:12px;background:var(--bg-card);border-radius:8px;border-left:3px solid ${priorityColor};">
+            <strong style="color:${priorityColor};">${a.priority}</strong><br>
+            ${a.description_tr}
+          </li>`;
+        });
+        html += `</ul>`;
       }
       break;
       
     case 'prediction':
       const prediction = data.prediction?.short_term_forecast || 'Tahmin bilgisi yok';
-      message = `📈 TAHMİN - ${machineId}\n\n${prediction}`;
+      html += `<p>${prediction}</p>`;
       break;
       
     case 'root_cause':
       const causes = data.root_cause?.likely_causes || [];
       if (causes.length === 0) {
-        message = `🎯 KÖK NEDEN - ${machineId}\n\nKök neden analizi yok.`;
+        html += `<p style="color:var(--text-2);">Kök neden analizi yok.</p>`;
       } else {
-        message = `🎯 KÖK NEDEN - ${machineId}\n\n` + 
-                  causes.map(c => `• ${c.description_tr}`).join('\n');
+        html += `<ul style="list-style:none;padding:0;">`;
+        causes.forEach(c => {
+          html += `<li style="margin-bottom:10px;padding:10px;background:var(--bg-card);border-radius:6px;">
+            • ${c.description_tr}
+          </li>`;
+        });
+        html += `</ul>`;
       }
       break;
   }
   
-  addAssistantMessage('ai', message);
+  html += `</div>`;
+  
+  // Sağ panelde göster
+  openDetailPanel(agentNames[agentType], html);
 }
 
 // Serbest mesaj gönder
@@ -575,8 +659,14 @@ function addAssistantMessage(sender, text) {
   
   const contentDiv = document.createElement('div');
   contentDiv.className = 'message-content';
-  contentDiv.textContent = text;
-  contentDiv.style.whiteSpace = 'pre-wrap'; // Yeni satırları koru
+  
+  // HTML içerik varsa innerHTML, yoksa textContent kullan
+  if (text.includes('<')) {
+    contentDiv.innerHTML = text;
+  } else {
+    contentDiv.textContent = text;
+    contentDiv.style.whiteSpace = 'pre-wrap';
+  }
   
   messageDiv.appendChild(contentDiv);
   messagesDiv.appendChild(messageDiv);

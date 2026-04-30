@@ -3,7 +3,7 @@
 #  CODLEAN MES - SİSTEM BAŞLATMA SCRİPTİ
 # ═══════════════════════════════════════════════════════════
 
-cd /Users/mac/kafka
+cd /Volumes/Workspace_Ahsen/Projeler/kafka
 
 echo ""
 echo "🚀 CODLEAN MES Sistemi Başlatılıyor..."

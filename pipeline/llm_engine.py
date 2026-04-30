@@ -272,7 +272,8 @@ class UstaBasi:
         def _run() -> None:
             try:
                 from google import genai
-                from src.core.api_key_manager import get_api_key, record_api_usage
+                from src.core.api_key_manager import get_api_key, record_api_usage, get_groq_api_key, record_groq_usage
+                import groq
                 
                 # Her çağrıda yeni API key al
                 current_key = get_api_key()
@@ -295,6 +296,36 @@ class UstaBasi:
                 record_api_usage(success=True)
             except Exception as e:
                 error_container[0] = e
+                err_str = str(e)
+                
+                # Gemini hatası - Groq fallback dene
+                if "429" in err_str or "quota" in err_str.lower():
+                    log.warning("[LLM_ENGINE] Gemini 429 hatası - Groq fallback deneniyor...")
+                    try:
+                        # Groq client
+                        groq_key = get_groq_api_key()
+                        groq_client = groq.Groq(api_key=groq_key)
+                        
+                        groq_response = groq_client.chat.completions.create(
+                            model='llama-3.3-70b-versatile',
+                            messages=[
+                                {"role": "system", "content": _SYSTEM_PROMPT},
+                                {"role": "user", "content": prompt}
+                            ],
+                            temperature=0.4,
+                            max_tokens=2048,
+                        )
+                        
+                        result_container[0] = groq_response.choices[0].message.content.strip()
+                        record_groq_usage(success=True)
+                        log.info("[LLM_ENGINE] Groq fallback başarılı!")
+                        return  # Groq başarılı, çık
+                        
+                    except Exception as groq_err:
+                        log.exception("[LLM_ENGINE] Groq fallback da başarısız: %s", groq_err)
+                        record_groq_usage(success=False)
+                        # Groq da başarısız, orijinal hatayı döndür
+                
                 # Hata durumunda da kaydet
                 record_api_usage(success=False)
 
@@ -315,7 +346,7 @@ class UstaBasi:
             log.exception("Gemini API hatası: %s", err_str)
 
             if "quota" in err_str.lower() or "429" in err_str:
-                return "🚫 API kotası doldu. Lütfen birkaç dakika sonra tekrar deneyin."
+                return "🚫 API kotası doldu. Groq fallback denendi ama başarısız oldu."
             elif "403" in err_str or "permission" in err_str.lower():
                 return "🔑 API anahtarı geçersiz veya yetkisiz. Lütfen GEMINI_API_KEY'i kontrol edin."
             elif "network" in err_str.lower() or "connection" in err_str.lower():

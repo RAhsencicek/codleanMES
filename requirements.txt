@@ -38,6 +38,9 @@ python-dotenv>=1.0.0
 # Yapay Zeka LLM (Usta Başı)
 google-genai>=0.2.0
 
+# Groq LLM Fallback
+groq>=1.2.0
+
 # Veri Formatı Doğrulama
 pydantic>=2.0.0
 
